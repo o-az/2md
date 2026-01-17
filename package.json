@@ -1,8 +1,14 @@
 {
-  "name": "repo2md",
+  "name": "gh2md",
   "version": "0.0.0",
   "type": "module",
   "repository": "github:o-az/repo2md",
+  "bin": {
+    "gh2md": "./dist/cli.js"
+  },
+  "files": [
+    "dist/cli.js"
+  ],
   "imports": {
     "#*": "./src/*",
     "#package.json": "./package.json",
@@ -11,12 +17,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:cli": "bun build ./src/cli.ts --outfile=./dist/cli.js --target=node --minify",
     "preview": "vite preview",
     "deploy": "NODE_ENV='production' wrangler --config='wrangler.json' deploy",
     "types": "wrangler types --env-interface CloudflareBindings",
     "check": "biome check . --write --unsafe",
     "check:types": "bun tsgo --project tsconfig.json --noEmit",
-    "test:e2e": "./scripts/checks.sh"
+    "test:e2e": "./scripts/checks.sh",
+    "prepublishOnly": "bun run build:cli"
   },
   "dependencies": {
     "hono": "^4.11.4"
