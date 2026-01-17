@@ -4,10 +4,10 @@
   "type": "module",
   "repository": "github:o-az/repo2md",
   "bin": {
-    "gh2md": "./dist/cli.js"
+    "gh2md": "./src/cli.mjs"
   },
   "files": [
-    "dist/cli.js"
+    "src/cli.mjs"
   ],
   "imports": {
     "#*": "./src/*",
@@ -17,7 +17,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:cli": "bun build ./src/cli.ts --outfile=./dist/cli.js --target=node --minify",
     "preview": "vite preview",
     "deploy": "NODE_ENV='production' wrangler --config='wrangler.json' deploy",
     "types": "wrangler types --env-interface CloudflareBindings",

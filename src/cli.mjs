@@ -22,7 +22,11 @@ Examples:
     process.exit(0)
   }
 
-  let url = args[0]!
+  let [url] = args
+  if (!url) {
+    console.error('Error: Missing GitHub URL')
+    process.exit(1)
+  }
 
   if (!url.includes('github.com')) {
     const parts = url.split('/')
@@ -50,7 +54,7 @@ Examples:
   console.log(text)
 }
 
-main().catch((err: Error) => {
-  console.error(err.message)
+main().catch(error => {
+  console.error(error instanceof Error ? error.message : 'the world is ending')
   process.exit(1)
 })
