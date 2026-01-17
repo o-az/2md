@@ -2,7 +2,7 @@
   "name": "gh2md",
   "version": "0.0.0",
   "type": "module",
-  "repository": "github:o-az/repo2md",
+  "repository": "github:o-az/gh2md",
   "bin": {
     "gh2md": "./src/cli.mjs"
   },

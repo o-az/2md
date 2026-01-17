@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const API_BASE = 'https://repo2md.evm.workers.dev'
+const API_BASE = 'https://gh2md.evm.workers.dev'
 
 async function main() {
   const args = process.argv.slice(2)

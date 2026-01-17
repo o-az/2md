@@ -1,4 +1,4 @@
-# repo2md
+# gh2md
 
 Converts GitHub repositories, directories, or single files into a single Markdown document for easy consumption by LLMs or documentation tools. Use the clean URL format with `gh_` for repos/directories or `ghf_` for single files.
 
