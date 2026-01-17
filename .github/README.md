@@ -4,13 +4,23 @@ Converts GitHub repositories, directories, or single files into a single Markdow
 
 ## Examples
 
-Paste any GitHub URL and it redirects to a clean format:
+**Whole repo**
 
-| Input | Redirects to |
-|-------|--------------|
-| `2md.sauce.wiki/github.com/vercel-labs/json-render` | `2md.sauce.wiki/gh_vercel-labs_json-render.md` |
-| `2md.sauce.wiki/github.com/vercel-labs/json-render/tree/main/examples/dashboard` | `2md.sauce.wiki/gh_vercel-labs_json-render_examples_dashboard.md` |
-| `2md.sauce.wiki/github.com/vercel-labs/json-render/blob/main/README.md` | Returns file content directly |
+Input: `2md.sauce.wiki/github.com/vercel-labs/json-render`
+
+Generates: [2md.sauce.wiki/gh_vercel-labs_json-render.md](https://2md.sauce.wiki/gh_vercel-labs_json-render.md)
+
+**Directory**
+
+Input: `2md.sauce.wiki/github.com/vercel-labs/json-render/tree/main/examples/dashboard`
+
+Generates: [2md.sauce.wiki/gh_vercel-labs_json-render_examples_dashboard.md](https://2md.sauce.wiki/gh_vercel-labs_json-render_examples_dashboard.md)
+
+**Single file**
+
+Input: `2md.sauce.wiki/github.com/vercel-labs/json-render/blob/main/README.md`
+
+Generates: [2md.sauce.wiki/ghf_vercel-labs_json-render_README.md](https://2md.sauce.wiki/github.com/vercel-labs/json-render/blob/main/README.md)
 
 ## CLI
 
