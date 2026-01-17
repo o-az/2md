@@ -9,7 +9,7 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "dev": {
+  "vars": {
     "port": 6969,
     "BUN_VERSION": "1.3.6"
   },

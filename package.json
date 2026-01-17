@@ -15,7 +15,8 @@
     "deploy": "NODE_ENV='production' wrangler --config='wrangler.json' deploy",
     "types": "wrangler types --env-interface CloudflareBindings",
     "check": "biome check . --write --unsafe",
-    "check:types": "bun tsgo --project tsconfig.json --noEmit"
+    "check:types": "bun tsgo --project tsconfig.json --noEmit",
+    "test:e2e": "./scripts/checks.sh"
   },
   "dependencies": {
     "hono": "^4.11.4"
