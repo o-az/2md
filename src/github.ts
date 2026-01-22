@@ -195,13 +195,40 @@ export async function getFileContent(
   repo: string,
   branch: string,
   path: string,
+  retries = 3,
 ): Promise<string> {
   const encodedPath = path.split('/').map(encodeURIComponent).join('/')
   const url = `${RAW_GITHUB_BASE}/${owner}/${repo}/${encodeURIComponent(branch)}/${encodedPath}`
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`Failed to fetch file: ${response.status}`)
 
-  return response.text()
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const response = await fetch(url)
+    if (response.ok) return response.text()
+    if (response.status === 429 || response.status >= 500) {
+      await new Promise(r => setTimeout(r, 100 * 2 ** attempt))
+      continue
+    }
+    throw new Error(`Failed to fetch file: ${response.status}`)
+  }
+  throw new Error(`Failed to fetch file after ${retries} retries`)
+}
+
+export async function fetchWithConcurrency<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency = 10,
+): Promise<R[]> {
+  const results: R[] = []
+  let index = 0
+
+  async function worker() {
+    while (index < items.length) {
+      const i = index++
+      results[i] = await fn(items[i]!)
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, worker))
+  return results
 }
 
 export function filterFiles(

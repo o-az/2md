@@ -13,6 +13,7 @@ import {
   type GitHubFile,
   filterByDirectory,
   resolveBranchAndPath,
+  fetchWithConcurrency,
 } from '#github.ts'
 import { IGNORE_FILES } from '#constants.ts'
 import { parseCleanPath, toCleanPath } from '#url.ts'
@@ -192,15 +193,17 @@ app.get('/:cleanPath{ghf?_.+\\.md}', cacheMiddleware, async context => {
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
 
-  const contents = await Promise.all(
-    files.map(async file => {
+  const contents = await fetchWithConcurrency(
+    files,
+    async file => {
       try {
         const content = await getFileContent(owner, repo, branch, file.path)
         return `## ${file.path}\n\n\`\`\`\n${content}\n\`\`\``
       } catch {
         return `## ${file.path}\n\n*Failed to fetch*`
       }
-    }),
+    },
+    10,
   )
 
   const markdown = `# ${owner}/${repo}@${branch}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
@@ -252,8 +255,9 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
 
-  const contents = await Promise.all(
-    files.map(async file => {
+  const contents = await fetchWithConcurrency(
+    files,
+    async file => {
       try {
         const content = await getFileContent(
           parsed.owner,
@@ -265,7 +269,8 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
       } catch {
         return `## ${file.path}\n\n*Failed to fetch*`
       }
-    }),
+    },
+    10,
   )
 
   const markdown = `# ${parsed.owner}/${parsed.repo}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
