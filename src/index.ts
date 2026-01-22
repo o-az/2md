@@ -177,11 +177,25 @@ app.get('/:path{.+}', async context => {
   const parsed = parseGitHubUrl(githubUrl)
 
   if (parsed.type === 'file') {
+    let branch = parsed.branch
+    let filePath = parsed.path!
+
+    if (parsed.path) {
+      const segments = [parsed.branch, ...parsed.path.split('/')]
+      const resolved = await resolveBranchAndPath(
+        parsed.owner,
+        parsed.repo,
+        segments,
+      )
+      branch = resolved.branch
+      filePath = resolved.path!
+    }
+
     const content = await getFileContent(
       parsed.owner,
       parsed.repo,
-      parsed.branch,
-      parsed.path!,
+      branch,
+      filePath,
     )
     return context.text(content, 200, {
       'Content-Type': 'text/markdown; charset=utf-8',

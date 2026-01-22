@@ -33,7 +33,11 @@ export async function resolveBranchAndPath(
     try {
       await getRepoFiles(owner, repo, branch)
       return { branch, path }
-    } catch {}
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes('404')) continue
+      throw e
+    }
   }
   return {
     branch: segments[0] ?? 'main',

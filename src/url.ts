@@ -3,7 +3,11 @@ function encodeBranch(branch: string): string {
 }
 
 function decodeBranch(encoded: string): string {
-  return encoded.replace(/~s/g, '/').replace(/~~/g, '~')
+  const SENTINEL = '\u0000'
+  return encoded
+    .replace(/~~/g, SENTINEL)
+    .replace(/~s/g, '/')
+    .replace(new RegExp(SENTINEL, 'g'), '~')
 }
 
 export function toCleanPath(
@@ -21,9 +25,7 @@ export function toCleanPath(
   return `/${parts.join('_')}.md`
 }
 
-export function parseCleanPath(
-  cleanPath: string,
-): {
+export function parseCleanPath(cleanPath: string): {
   owner: string
   repo: string
   branch: string
