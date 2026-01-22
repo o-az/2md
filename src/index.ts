@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
+import { cache } from 'hono/cache'
 
 import {
   isTextFile,
@@ -76,7 +77,7 @@ app.get('/favicon.ico', context => context.body(null, 204))
 app.get('/', context => {
   return context.html(
     /* html */ `<html>
-    <body style="font-family: monospace; max-width: 800px; margin: 0 auto; padding: 2rem;">
+    <body style="font-family: monospace; max-width: 800px; margin: 0 auto; padding: 1rem;">
       <h1>2md</h1>
       <p>Convert GitHub repos, directories, or files to markdown.</p>
       
@@ -87,7 +88,7 @@ app.get('/', context => {
 /github.com/owner/repo/tree/b/path  → directory at branch
 /github.com/owner/repo/blob/b/file  → single file at branch
 /github.com/owner/repo/path         → shorthand (file or dir)
-      </pre>
+</pre>
 
       <h2>Examples</h2>
       <h3>Whole repo</h3>
@@ -123,116 +124,134 @@ app.get('/', context => {
         <li><a href="/gh_o-az_2md@main_src.md">/gh_o-az_2md@main_src.md</a></li>
         <li><a href="/ghf_o-az_2md@main_justfile.md">/ghf_o-az_2md@main_justfile.md</a></li>
       </ul>
+
+      <footer style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ccc;">
+        <a href="https://github.com/o-az/2md" target="_blank" rel="noopener noreferrer">github.com/o-az/2md</a>
+      </footer>
     </body>
   </html>`,
   )
 })
 
-app.get('/:cleanPath{ghf?_.+\\.md}', async context => {
-  const cleanPath = context.req.param('cleanPath')
-  const parsed = parseCleanPath(cleanPath)
-  if (!parsed) {
-    throw new HTTPException(400, { message: 'Invalid path format' })
-  }
-
-  const { owner, repo, branch, path, isFile } = parsed
-
-  if (isFile && path) {
-    const content = await getFileContent(owner, repo, branch, path)
-    return context.text(content, 200, {
-      'Content-Type': 'text/markdown; charset=utf-8',
-    })
-  }
-
-  const allFiles = await getRepoFiles(owner, repo, branch)
-
-  let files: Array<GitHubFile> = allFiles
-
-  if (path) files = filterByDirectory(files, path)
-
-  files = filterFiles(files, IGNORE_FILES)
-  files = files.filter(f => isTextFile(f.path))
-
-  const contents = await Promise.all(
-    files.map(async file => {
-      try {
-        const content = await getFileContent(owner, repo, branch, file.path)
-        return `## ${file.path}\n\n\`\`\`\n${content}\n\`\`\``
-      } catch {
-        return `## ${file.path}\n\n*Failed to fetch*`
-      }
-    }),
-  )
-
-  const markdown = `# ${owner}/${repo}@${branch}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
-
-  return context.text(markdown, 200, {
-    'Content-Type': 'text/markdown; charset=utf-8',
-  })
-})
-
-app.get('/:path{.+}', async context => {
-  const urlPath = context.req.param('path')
-  const githubUrl = urlPath.startsWith('http') ? urlPath : `https://${urlPath}`
-  const parsed = parseGitHubUrl(githubUrl)
-
-  if (parsed.type === 'file') {
-    let branch = parsed.branch
-    let filePath = parsed.path!
-
-    if (parsed.path) {
-      const segments = [parsed.branch, ...parsed.path.split('/')]
-      const resolved = await resolveBranchAndPath(
-        parsed.owner,
-        parsed.repo,
-        segments,
-      )
-      branch = resolved.branch
-      filePath = resolved.path!
+app.get(
+  '/:cleanPath{ghf?_.+\\.md}',
+  cache({ cacheName: '2md', cacheControl: 'public, max-age=300' }),
+  async context => {
+    const cleanPath = context.req.param('cleanPath')
+    const parsed = parseCleanPath(cleanPath)
+    if (!parsed) {
+      throw new HTTPException(400, { message: 'Invalid path format' })
     }
 
-    const content = await getFileContent(
-      parsed.owner,
-      parsed.repo,
-      branch,
-      filePath,
+    const { owner, repo, branch, path, isFile } = parsed
+
+    if (isFile && path) {
+      const content = await getFileContent(owner, repo, branch, path)
+      return context.text(content, 200, {
+        'Content-Type': 'text/markdown; charset=utf-8',
+      })
+    }
+
+    const allFiles = await getRepoFiles(owner, repo, branch)
+
+    let files: Array<GitHubFile> = allFiles
+
+    if (path) files = filterByDirectory(files, path)
+
+    files = filterFiles(files, IGNORE_FILES)
+    files = files.filter(f => isTextFile(f.path))
+
+    const contents = await Promise.all(
+      files.map(async file => {
+        try {
+          const content = await getFileContent(owner, repo, branch, file.path)
+          return `## ${file.path}\n\n\`\`\`\n${content}\n\`\`\``
+        } catch {
+          return `## ${file.path}\n\n*Failed to fetch*`
+        }
+      }),
     )
-    return context.text(content, 200, {
+
+    const markdown = `# ${owner}/${repo}@${branch}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
+
+    return context.text(markdown, 200, {
       'Content-Type': 'text/markdown; charset=utf-8',
     })
-  }
+  },
+)
 
-  const allFiles = await getRepoFiles(parsed.owner, parsed.repo, parsed.branch)
+app.get(
+  '/:path{.+}',
+  cache({ cacheName: '2md', cacheControl: 'public, max-age=300' }),
+  async context => {
+    const urlPath = context.req.param('path')
+    const githubUrl = urlPath.startsWith('http')
+      ? urlPath
+      : `https://${urlPath}`
+    const parsed = parseGitHubUrl(githubUrl)
 
-  let files: Array<GitHubFile> = allFiles
+    if (parsed.type === 'file') {
+      let branch = parsed.branch
+      let filePath = parsed.path!
 
-  if (parsed.type === 'directory' && parsed.path)
-    files = filterByDirectory(files, parsed.path)
-
-  files = filterFiles(files, IGNORE_FILES)
-  files = files.filter(f => isTextFile(f.path))
-
-  const contents = await Promise.all(
-    files.map(async file => {
-      try {
-        const content = await getFileContent(
+      if (parsed.path) {
+        const segments = [parsed.branch, ...parsed.path.split('/')]
+        const resolved = await resolveBranchAndPath(
           parsed.owner,
           parsed.repo,
-          parsed.branch,
-          file.path,
+          segments,
         )
-        return `## ${file.path}\n\n\`\`\`\n${content}\n\`\`\``
-      } catch {
-        return `## ${file.path}\n\n*Failed to fetch*`
+        branch = resolved.branch
+        filePath = resolved.path!
       }
-    }),
-  )
 
-  const markdown = `# ${parsed.owner}/${parsed.repo}${parsed.path ? `/${parsed.path}` : ''}\n\n${contents.join('\n\n')}`
+      const content = await getFileContent(
+        parsed.owner,
+        parsed.repo,
+        branch,
+        filePath,
+      )
+      return context.text(content, 200, {
+        'Content-Type': 'text/markdown; charset=utf-8',
+      })
+    }
 
-  return context.text(markdown, 200, {
-    'Content-Type': 'text/markdown; charset=utf-8',
-  })
-})
+    const allFiles = await getRepoFiles(
+      parsed.owner,
+      parsed.repo,
+      parsed.branch,
+    )
+
+    let files: Array<GitHubFile> = allFiles
+
+    if (parsed.type === 'directory' && parsed.path)
+      files = filterByDirectory(files, parsed.path)
+
+    files = filterFiles(files, IGNORE_FILES)
+    files = files.filter(f => isTextFile(f.path))
+
+    const contents = await Promise.all(
+      files.map(async file => {
+        try {
+          const content = await getFileContent(
+            parsed.owner,
+            parsed.repo,
+            parsed.branch,
+            file.path,
+          )
+          return `## ${file.path}\n\n\`\`\`\n${content}\n\`\`\``
+        } catch {
+          return `## ${file.path}\n\n*Failed to fetch*`
+        }
+      }),
+    )
+
+    const markdown = `# ${parsed.owner}/${parsed.repo}${parsed.path ? `/${parsed.path}` : ''}\n\n${contents.join('\n\n')}`
+
+    return context.text(markdown, 200, {
+      'Content-Type': 'text/markdown; charset=utf-8',
+    })
+  },
+)
 
 export default app satisfies ExportedHandler<Cloudflare.Env>

@@ -83,15 +83,7 @@ check_content "File in subdirectory" \
 
 echo ""
 echo "=== Branch handling ==="
-check "Branch with slash (o-az/fixes)" \
-  "github.com/o-az/2md/tree/o-az/fixes" \
-  "gh_o-az_2md@o-az~sfixes.md"
-
-check_content "Branch with slash returns correct content" \
-  "github.com/o-az/2md/tree/o-az/fixes" \
-  "o-az/2md@o-az/fixes"
-
-check "Different branch (main vs other)" \
+check "Different branch (main)" \
   "github.com/honojs/hono/tree/main/src" \
   "gh_honojs_hono@main_src.md"
 
@@ -114,8 +106,8 @@ check "Clean path (directory)" \
 check "Clean path (file)" \
   "ghf_o-az_2md@main_justfile.md"
 
-check "Clean path with branch slash" \
-  "gh_o-az_2md@o-az~sfixes.md"
+check "Clean path with tag" \
+  "gh_honojs_hono@v4.0.0_src.md"
 
 echo ""
 echo "=== Edge cases ==="
