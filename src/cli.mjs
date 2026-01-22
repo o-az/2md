@@ -34,7 +34,10 @@ Examples:
       url = `github.com/${url}`
     } else if (parts.length > 2) {
       const [owner, repo, ...rest] = parts
-      url = `github.com/${owner}/${repo}/tree/main/${rest.join('/')}`
+      const path = rest.join('/')
+      const lastPart = rest[rest.length - 1] || ''
+      const isFile = lastPart.includes('.')
+      url = `github.com/${owner}/${repo}/${isFile ? 'blob' : 'tree'}/main/${path}`
     } else {
       url = `github.com/${url}`
     }
