@@ -40,11 +40,8 @@ app.use('/:path{.+}', async (c, next) => {
     let branch = parsed.branch
     let path = parsed.path
 
-    if (
-      (parsed.type === 'directory' || parsed.type === 'file') &&
-      parsed.path
-    ) {
-      const segments = [parsed.branch, ...parsed.path.split('/')]
+    if (!branch) {
+      const segments = path ? path.split('/') : []
       const resolved = await resolveBranchAndPath(
         parsed.owner,
         parsed.repo,
@@ -217,38 +214,38 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   const githubUrl = urlPath.startsWith('http') ? urlPath : `https://${urlPath}`
   const parsed = parseGitHubUrl(githubUrl)
 
+  let branch = parsed.branch
+  let path = parsed.path
+
+  if (!branch) {
+    const segments = path ? path.split('/') : []
+    const resolved = await resolveBranchAndPath(
+      parsed.owner,
+      parsed.repo,
+      segments,
+    )
+    branch = resolved.branch
+    path = resolved.path
+  }
+
   if (parsed.type === 'file') {
-    let branch = parsed.branch
-    let filePath = parsed.path!
-
-    if (parsed.path) {
-      const segments = [parsed.branch, ...parsed.path.split('/')]
-      const resolved = await resolveBranchAndPath(
-        parsed.owner,
-        parsed.repo,
-        segments,
-      )
-      branch = resolved.branch
-      filePath = resolved.path!
-    }
-
     const content = await getFileContent(
       parsed.owner,
       parsed.repo,
       branch,
-      filePath,
+      path!,
     )
     return context.text(content, 200, {
       'Content-Type': 'text/markdown; charset=utf-8',
     })
   }
 
-  const allFiles = await getRepoFiles(parsed.owner, parsed.repo, parsed.branch)
+  const allFiles = await getRepoFiles(parsed.owner, parsed.repo, branch)
 
   let files: Array<GitHubFile> = allFiles
 
-  if (parsed.type === 'directory' && parsed.path)
-    files = filterByDirectory(files, parsed.path)
+  if (parsed.type === 'directory' && path)
+    files = filterByDirectory(files, path)
 
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
@@ -259,7 +256,7 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
         const content = await getFileContent(
           parsed.owner,
           parsed.repo,
-          parsed.branch,
+          branch,
           file.path,
         )
         return `## ${file.path}\n\n\`\`\`\n${content}\n\`\`\``
@@ -269,7 +266,7 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
     }),
   )
 
-  const markdown = `# ${parsed.owner}/${parsed.repo}${parsed.path ? `/${parsed.path}` : ''}\n\n${contents.join('\n\n')}`
+  const markdown = `# ${parsed.owner}/${parsed.repo}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
 
   return context.text(markdown, 200, {
     'Content-Type': 'text/markdown; charset=utf-8',

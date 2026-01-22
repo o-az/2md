@@ -18,7 +18,7 @@ export interface ParsedGitHubUrl {
   type: 'repo' | 'directory' | 'file'
   owner: string
   repo: string
-  branch: string
+  branch?: string
   path?: string
 }
 
@@ -27,6 +27,11 @@ export async function resolveBranchAndPath(
   repo: string,
   segments: string[],
 ): Promise<{ branch: string; path?: string }> {
+  if (segments.length === 0) {
+    const defaultBranch = await getDefaultBranch(owner, repo)
+    return { branch: defaultBranch }
+  }
+
   for (let i = segments.length; i >= 1; i--) {
     const branch = segments.slice(0, i).join('/')
     const path = segments.slice(i).join('/') || undefined
@@ -39,9 +44,11 @@ export async function resolveBranchAndPath(
       throw e
     }
   }
+
+  const defaultBranch = await getDefaultBranch(owner, repo)
   return {
-    branch: segments[0] ?? 'main',
-    path: segments.slice(1).join('/') || undefined,
+    branch: defaultBranch,
+    path: segments.join('/') || undefined,
   }
 }
 
@@ -59,11 +66,11 @@ export function parseGitHubUrl(url: string): ParsedGitHubUrl {
   }
 
   if (parts.length === 2) {
-    return { type: 'repo', owner, repo, branch: 'main' }
+    return { type: 'repo', owner, repo }
   }
 
   const urlType = parts[2]
-  const branch = parts[3] ?? 'main'
+  const branch = parts[3]
   const path = parts.slice(4).join('/')
 
   if (urlType === 'blob') {
@@ -90,8 +97,8 @@ export function parseGitHubUrl(url: string): ParsedGitHubUrl {
   const isFile = fileName.includes('.') || knownFiles.includes(fileName)
 
   return isFile
-    ? { type: 'file', owner, repo, branch: 'main', path: shortPath }
-    : { type: 'directory', owner, repo, branch: 'main', path: shortPath }
+    ? { type: 'file', owner, repo, path: shortPath }
+    : { type: 'directory', owner, repo, path: shortPath }
 }
 
 async function getRepoFilesFromUngh(
@@ -161,6 +168,20 @@ export async function getRepoFiles(
     }
     throw e
   }
+}
+
+export async function getDefaultBranch(
+  owner: string,
+  repo: string,
+): Promise<string> {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}`, {
+    headers: { 'User-Agent': '2md' },
+  })
+  if (!response.ok) {
+    return 'main'
+  }
+  const data = (await response.json()) as { default_branch: string }
+  return data.default_branch
 }
 
 export async function getFileContent(
