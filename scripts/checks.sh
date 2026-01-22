@@ -67,7 +67,8 @@ check "Directory shorthand (no tree)" \
 echo ""
 echo "=== File handling ==="
 check "Single file (blob)" \
-  "github.com/o-az/2md/blob/main/justfile"
+  "github.com/o-az/2md/blob/main/justfile" \
+  "ghf_o-az_2md@main_justfile.md"
 
 check_content "File shorthand (justfile)" \
   "github.com/o-az/2md/justfile" \

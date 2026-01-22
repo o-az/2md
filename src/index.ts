@@ -33,14 +33,14 @@ app.use('/:path{.+}', async (c, next) => {
       ? urlPath
       : `https://${urlPath}`
     const parsed = parseGitHubUrl(githubUrl)
-    if (parsed.type === 'file') {
-      return next()
-    }
 
     let branch = parsed.branch
     let path = parsed.path
 
-    if (parsed.type === 'directory' && parsed.path) {
+    if (
+      (parsed.type === 'directory' || parsed.type === 'file') &&
+      parsed.path
+    ) {
       const segments = [parsed.branch, ...parsed.path.split('/')]
       const resolved = await resolveBranchAndPath(
         parsed.owner,
@@ -56,7 +56,7 @@ app.use('/:path{.+}', async (c, next) => {
       parsed.repo,
       branch,
       path,
-      false,
+      parsed.type === 'file',
     )
     return c.redirect(cleanPath, 301)
   }
@@ -93,36 +93,36 @@ app.get('/', context => {
       <h2>Examples</h2>
       <h3>Whole repo</h3>
       <ul>
-        <li><a href="/github.com/o-az/2md">/github.com/o-az/2md</a></li>
-        <li><a href="/github.com/honojs/hono">/github.com/honojs/hono</a></li>
+        <li><a href="/github.com/o-az/2md" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md</a></li>
+        <li><a href="/github.com/honojs/hono" target="_blank" rel="noopener noreferrer">/github.com/honojs/hono</a></li>
       </ul>
 
       <h3>Directory</h3>
       <ul>
-        <li><a href="/github.com/o-az/2md/tree/main/src">/github.com/o-az/2md/tree/main/src</a></li>
-        <li><a href="/github.com/o-az/2md/src">/github.com/o-az/2md/src</a> (shorthand)</li>
-        <li><a href="/github.com/o-az/2md/tree/main/.github">/github.com/o-az/2md/tree/main/.github</a></li>
+        <li><a href="/github.com/o-az/2md/tree/main/src" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/tree/main/src</a></li>
+        <li><a href="/github.com/o-az/2md/src" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/src</a> (shorthand)</li>
+        <li><a href="/github.com/o-az/2md/tree/main/.github" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/tree/main/.github</a></li>
       </ul>
 
       <h3>Single file</h3>
       <ul>
-        <li><a href="/github.com/o-az/2md/blob/main/justfile">/github.com/o-az/2md/blob/main/justfile</a></li>
-        <li><a href="/github.com/o-az/2md/justfile">/github.com/o-az/2md/justfile</a> (shorthand)</li>
-        <li><a href="/github.com/o-az/2md/src/index.ts">/github.com/o-az/2md/src/index.ts</a></li>
-        <li><a href="/github.com/o-az/2md/.env.example">/github.com/o-az/2md/.env.example</a></li>
+        <li><a href="/github.com/o-az/2md/blob/main/justfile" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/blob/main/justfile</a></li>
+        <li><a href="/github.com/o-az/2md/justfile" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/justfile</a> (shorthand)</li>
+        <li><a href="/github.com/o-az/2md/src/index.ts" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/src/index.ts</a></li>
+        <li><a href="/github.com/o-az/2md/.env.example" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/.env.example</a></li>
       </ul>
 
       <h3>Branches & tags</h3>
       <ul>
-        <li><a href="/github.com/honojs/hono/tree/v4.0.0/src">/github.com/honojs/hono/tree/v4.0.0/src</a></li>
-        <li><a href="/github.com/o-az/2md/tree/o-az/fixes">/github.com/o-az/2md/tree/o-az/fixes</a> (branch with /)</li>
+        <li><a href="/github.com/honojs/hono/tree/v4.0.0/src" target="_blank" rel="noopener noreferrer">/github.com/honojs/hono/tree/v4.0.0/src</a></li>
+        <li><a href="/github.com/o-az/2md/tree/cli" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/tree/cli</a> (branch with /)</li>
       </ul>
 
       <h3>Clean path format</h3>
       <ul>
-        <li><a href="/gh_o-az_2md@main.md">/gh_o-az_2md@main.md</a></li>
-        <li><a href="/gh_o-az_2md@main_src.md">/gh_o-az_2md@main_src.md</a></li>
-        <li><a href="/ghf_o-az_2md@main_justfile.md">/ghf_o-az_2md@main_justfile.md</a></li>
+        <li><a href="/gh_o-az_2md@main.md" target="_blank" rel="noopener noreferrer">/gh_o-az_2md@main.md</a></li>
+        <li><a href="/gh_o-az_2md@main_src.md" target="_blank" rel="noopener noreferrer">/gh_o-az_2md@main_src.md</a></li>
+        <li><a href="/ghf_o-az_2md@main_justfile.md" target="_blank" rel="noopener noreferrer">/ghf_o-az_2md@main_justfile.md</a></li>
       </ul>
 
       <footer style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ccc;">
