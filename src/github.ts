@@ -344,6 +344,7 @@ export function isTextFile(path: string): boolean {
     '.zig',
     '.v',
     '.sol',
+    '.vy',
     '.move',
     '.cairo',
     // DevOps/CI
