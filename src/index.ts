@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cache } from 'hono/cache'
 import { except } from 'hono/combine'
+import { env } from 'cloudflare:workers'
 import { cacheHeader } from 'pretty-cache-header'
 import { HTTPException } from 'hono/http-exception'
 
@@ -15,9 +16,9 @@ import {
   resolveBranchAndPath,
   fetchWithConcurrency,
 } from '#github.ts'
+import { landingApp } from '#landing.tsx'
 import { IGNORE_FILES } from '#constants.ts'
 import { parseCleanPath, toCleanPath } from '#url.ts'
-import { env } from 'cloudflare:workers'
 
 export const app = new Hono<{ Bindings: Cloudflare.Env }>()
 
@@ -101,64 +102,7 @@ app.get('/purge', async context => {
   })
 })
 
-app.get('/', context => {
-  return context.html(
-    /* html */ `<html>
-    <body style="font-family: monospace; max-width: 800px; margin: 0 auto; padding: 1rem;">
-      <h1>2md</h1>
-      <p>Convert GitHub repos, directories, or files to markdown.</p>
-      
-      <h2>Usage</h2>
-      <pre style="background: #f4f4f4; padding: 1rem; overflow-x: auto;">
-/github.com/owner/repo              → whole repo
-/github.com/owner/repo/tree/branch  → repo at branch
-/github.com/owner/repo/tree/b/path  → directory at branch
-/github.com/owner/repo/blob/b/file  → single file at branch
-/github.com/owner/repo/path         → shorthand (file or dir)
-</pre>
-
-      <h2>Examples</h2>
-      <h3>Whole repo</h3>
-      <ul>
-        <li><a href="/github.com/o-az/2md" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md</a></li>
-        <li><a href="/github.com/honojs/hono" target="_blank" rel="noopener noreferrer">/github.com/honojs/hono</a></li>
-      </ul>
-
-      <h3>Directory</h3>
-      <ul>
-        <li><a href="/github.com/o-az/2md/tree/main/src" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/tree/main/src</a></li>
-        <li><a href="/github.com/o-az/2md/src" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/src</a> (shorthand)</li>
-        <li><a href="/github.com/o-az/2md/tree/main/.github" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/tree/main/.github</a></li>
-      </ul>
-
-      <h3>Single file</h3>
-      <ul>
-        <li><a href="/github.com/o-az/2md/blob/main/justfile" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/blob/main/justfile</a></li>
-        <li><a href="/github.com/o-az/2md/justfile" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/justfile</a> (shorthand)</li>
-        <li><a href="/github.com/o-az/2md/src/index.ts" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/src/index.ts</a></li>
-        <li><a href="/github.com/o-az/2md/.env.example" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/.env.example</a></li>
-      </ul>
-
-      <h3>Branches & tags</h3>
-      <ul>
-        <li><a href="/github.com/honojs/hono/tree/v4.0.0/src" target="_blank" rel="noopener noreferrer">/github.com/honojs/hono/tree/v4.0.0/src</a></li>
-        <li><a href="/github.com/o-az/2md/tree/cli" target="_blank" rel="noopener noreferrer">/github.com/o-az/2md/tree/cli</a> (branch with /)</li>
-      </ul>
-
-      <h3>Clean path format</h3>
-      <ul>
-        <li><a href="/gh_o-az_2md@main.md" target="_blank" rel="noopener noreferrer">/gh_o-az_2md@main.md</a></li>
-        <li><a href="/gh_o-az_2md@main_src.md" target="_blank" rel="noopener noreferrer">/gh_o-az_2md@main_src.md</a></li>
-        <li><a href="/ghf_o-az_2md@main_justfile.md" target="_blank" rel="noopener noreferrer">/ghf_o-az_2md@main_justfile.md</a></li>
-      </ul>
-
-      <footer style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ccc;">
-        <a href="https://github.com/o-az/2md" target="_blank" rel="noopener noreferrer">github.com/o-az/2md</a>
-      </footer>
-    </body>
-  </html>`,
-  )
-})
+app.route('/', landingApp)
 
 const cacheMiddleware = except(
   c => env.DISABLE_CACHE === 'true',

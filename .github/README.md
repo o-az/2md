@@ -1,4 +1,4 @@
-# 2md
+# [2md](https://2md.sauce.wiki)
 
 Converts GitHub repositories, directories, or single files into a single Markdown document for easy consumption by LLMs or documentation tools.
 
@@ -33,3 +33,5 @@ npx github:o-az/2md honojs/hono
 npx github:o-az/2md honojs/hono/src
 npx github:o-az/2md https://github.com/honojs/hono/blob/main/README.md
 ```
+
+[source code](https://github.com/o-az/2md)
