@@ -9,6 +9,14 @@ export interface GitHubFile {
   size: number
 }
 
+export interface Submodule {
+  name: string
+  path: string
+  url: string
+  owner: string
+  repo: string
+}
+
 export interface FilesResponse {
   meta: { sha: string }
   files: Array<GitHubFile>
@@ -252,6 +260,192 @@ export function filterByDirectory(
 ): Array<GitHubFile> {
   const normalizedDir = directory.replace(/\/$/, '')
   return files.filter(file => file.path.startsWith(`${normalizedDir}/`))
+}
+
+export function parseGitmodules(content: string): Array<Submodule> {
+  const submodules: Array<Submodule> = []
+  const lines = content.split('\n')
+
+  let current: Partial<Submodule> | null = null
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    const submoduleMatch = trimmed.match(/^\[submodule\s+"(.+)"\]$/)
+    if (submoduleMatch) {
+      if (current?.path && current?.url) {
+        const parsed = parseSubmoduleUrl(current.url)
+        if (parsed) {
+          submodules.push({
+            name: current.name!,
+            path: current.path,
+            url: current.url,
+            owner: parsed.owner,
+            repo: parsed.repo,
+          })
+        }
+      }
+      current = { name: submoduleMatch[1] }
+      continue
+    }
+
+    if (current) {
+      const pathMatch = trimmed.match(/^path\s*=\s*(.+)$/)
+      if (pathMatch) {
+        current.path = pathMatch[1]
+        continue
+      }
+
+      const urlMatch = trimmed.match(/^url\s*=\s*(.+)$/)
+      if (urlMatch) {
+        current.url = urlMatch[1]
+      }
+    }
+  }
+
+  if (current?.path && current?.url) {
+    const parsed = parseSubmoduleUrl(current.url)
+    if (parsed) {
+      submodules.push({
+        name: current.name!,
+        path: current.path,
+        url: current.url,
+        owner: parsed.owner,
+        repo: parsed.repo,
+      })
+    }
+  }
+
+  return submodules
+}
+
+function parseSubmoduleUrl(
+  url: string,
+): { owner: string; repo: string } | null {
+  const normalized = url
+    .replace(/^git@github\.com:/, 'https://github.com/')
+    .replace(/\.git$/, '')
+
+  const match = normalized.match(/github\.com\/([^/]+)\/([^/]+)/)
+  if (!match || !match[1] || !match[2]) return null
+
+  return { owner: match[1], repo: match[2] }
+}
+
+export interface SubmoduleContent {
+  submodule: Submodule
+  files: Array<{ path: string; content: string }>
+  error?: string
+}
+
+export async function fetchSubmodules(
+  owner: string,
+  repo: string,
+  branch: string,
+  allFiles: Array<GitHubFile>,
+  maxDepth = 2,
+  currentDepth = 0,
+  visited = new Set<string>(),
+): Promise<Array<SubmoduleContent>> {
+  if (currentDepth >= maxDepth) return []
+
+  const repoKey = `${owner}/${repo}`
+  if (visited.has(repoKey)) return []
+  visited.add(repoKey)
+
+  const hasGitmodules = allFiles.some(f => f.path === '.gitmodules')
+  if (!hasGitmodules) return []
+
+  let gitmodulesContent: string
+  try {
+    gitmodulesContent = await getFileContent(owner, repo, branch, '.gitmodules')
+  } catch {
+    return []
+  }
+
+  const submodules = parseGitmodules(gitmodulesContent)
+  if (submodules.length === 0) return []
+
+  const results: Array<SubmoduleContent> = []
+
+  await Promise.all(
+    submodules.map(async submodule => {
+      try {
+        const submoduleKey = `${submodule.owner}/${submodule.repo}`
+        if (visited.has(submoduleKey)) {
+          results.push({
+            submodule,
+            files: [],
+            error: 'Circular reference detected',
+          })
+          return
+        }
+
+        const defaultBranch = await getDefaultBranch(
+          submodule.owner,
+          submodule.repo,
+        )
+        const subFiles = await getRepoFiles(
+          submodule.owner,
+          submodule.repo,
+          defaultBranch,
+        )
+
+        const textFiles = subFiles.filter(f => isTextFile(f.path))
+
+        const contents = await fetchWithConcurrency(
+          textFiles.slice(0, 100),
+          async file => {
+            try {
+              const content = await getFileContent(
+                submodule.owner,
+                submodule.repo,
+                defaultBranch,
+                file.path,
+              )
+              return { path: `${submodule.path}/${file.path}`, content }
+            } catch {
+              return {
+                path: `${submodule.path}/${file.path}`,
+                content: '*Failed to fetch*',
+              }
+            }
+          },
+          10,
+        )
+
+        results.push({ submodule, files: contents })
+
+        const nestedResults = await fetchSubmodules(
+          submodule.owner,
+          submodule.repo,
+          defaultBranch,
+          subFiles,
+          maxDepth,
+          currentDepth + 1,
+          visited,
+        )
+
+        for (const nested of nestedResults) {
+          results.push({
+            ...nested,
+            files: nested.files.map(f => ({
+              ...f,
+              path: `${submodule.path}/${f.path}`,
+            })),
+          })
+        }
+      } catch (e) {
+        results.push({
+          submodule,
+          files: [],
+          error: e instanceof Error ? e.message : 'Unknown error',
+        })
+      }
+    }),
+  )
+
+  return results
 }
 
 export function isTextFile(path: string): boolean {

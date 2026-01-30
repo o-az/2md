@@ -15,6 +15,7 @@ import {
   filterByDirectory,
   resolveBranchAndPath,
   fetchWithConcurrency,
+  fetchSubmodules,
 } from '#github.ts'
 import { landingApp } from '#landing.tsx'
 import { IGNORE_FILES } from '#constants.ts'
@@ -61,7 +62,8 @@ app.use('/:path{.+}', async (c, next) => {
       path,
       parsed.type === 'file',
     )
-    return c.redirect(cleanPath, 301)
+    const queryString = new URL(c.req.url).search
+    return c.redirect(`${cleanPath}${queryString}`, 301)
   }
   return next()
 })
@@ -120,6 +122,7 @@ app.get('/:cleanPath{ghf?_.+\\.md}', cacheMiddleware, async context => {
   }
 
   const { owner, repo, branch, path, isFile } = parsed
+  const includeSubmodules = context.req.query('submodules') === 'true'
 
   if (isFile && path) {
     const content = await getFileContent(owner, repo, branch, path)
@@ -150,7 +153,30 @@ app.get('/:cleanPath{ghf?_.+\\.md}', cacheMiddleware, async context => {
     10,
   )
 
-  const markdown = `# ${owner}/${repo}@${branch}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
+  let markdown = `# ${owner}/${repo}@${branch}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
+
+  if (includeSubmodules && !path) {
+    const submoduleResults = await fetchSubmodules(
+      owner,
+      repo,
+      branch,
+      allFiles,
+    )
+
+    for (const result of submoduleResults) {
+      if (result.error) {
+        markdown += `\n\n---\n\n# Submodule: ${result.submodule.path}\n\n*Error: ${result.error}*`
+        continue
+      }
+
+      if (result.files.length > 0) {
+        const subContents = result.files
+          .map(f => `## ${f.path}\n\n\`\`\`\n${f.content}\n\`\`\``)
+          .join('\n\n')
+        markdown += `\n\n---\n\n# Submodule: ${result.submodule.path} (${result.submodule.owner}/${result.submodule.repo})\n\n${subContents}`
+      }
+    }
+  }
 
   return context.text(markdown, 200, {
     'Content-Type': 'text/markdown; charset=utf-8',
@@ -161,6 +187,7 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   const urlPath = context.req.param('path')
   const githubUrl = urlPath.startsWith('http') ? urlPath : `https://${urlPath}`
   const parsed = parseGitHubUrl(githubUrl)
+  const includeSubmodules = context.req.query('submodules') === 'true'
 
   let branch = parsed.branch
   let path = parsed.path
@@ -217,7 +244,30 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
     10,
   )
 
-  const markdown = `# ${parsed.owner}/${parsed.repo}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
+  let markdown = `# ${parsed.owner}/${parsed.repo}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
+
+  if (includeSubmodules && !path) {
+    const submoduleResults = await fetchSubmodules(
+      parsed.owner,
+      parsed.repo,
+      branch,
+      allFiles,
+    )
+
+    for (const result of submoduleResults) {
+      if (result.error) {
+        markdown += `\n\n---\n\n# Submodule: ${result.submodule.path}\n\n*Error: ${result.error}*`
+        continue
+      }
+
+      if (result.files.length > 0) {
+        const subContents = result.files
+          .map(f => `## ${f.path}\n\n\`\`\`\n${f.content}\n\`\`\``)
+          .join('\n\n')
+        markdown += `\n\n---\n\n# Submodule: ${result.submodule.path} (${result.submodule.owner}/${result.submodule.repo})\n\n${subContents}`
+      }
+    }
+  }
 
   return context.text(markdown, 200, {
     'Content-Type': 'text/markdown; charset=utf-8',

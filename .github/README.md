@@ -26,6 +26,12 @@ Generates: [2md.sauce.wiki/gh_vercel-labs_json-render_examples_dashboard.md](htt
 
 Generates: [2md.sauce.wiki/ghf_vercel-labs_json-render_README.md](https://2md.sauce.wiki/github.com/vercel-labs/json-render/blob/main/README.md)
 
+**With submodules** (for Foundry/Solidity projects):
+
+<https://2md.sauce.wiki/github.com/transmissions11/solmate?submodules=true>
+
+Fetches the repo plus all git submodules (e.g., `lib/forge-std`, `lib/openzeppelin-contracts`).
+
 ## CLI
 
 ```bash
