@@ -189,6 +189,30 @@ landingApp.get('/', context =>
         </li>
       </ul>
 
+      <h3>With submodules</h3>
+      <p style="font-size: 0.9em; color: #666;">
+        For Foundry/Solidity projects with git submodules in lib/
+      </p>
+      <ul>
+        <li>
+          <a
+            href="/github.com/transmissions11/solmate?submodules=true"
+            target="_blank"
+            rel="noopener noreferrer">
+            /github.com/transmissions11/solmate?submodules=true
+          </a>
+        </li>
+        <li>
+          <a
+            href="/gh_transmissions11_solmate@main.md?submodules=true"
+            target="_blank"
+            rel="noopener noreferrer">
+            /gh_...@main.md?submodules=true
+          </a>{' '}
+          (clean path)
+        </li>
+      </ul>
+
       <footer style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ccc;">
         <a
           href="https://github.com/o-az/2md"
