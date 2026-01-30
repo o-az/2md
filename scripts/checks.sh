@@ -47,6 +47,24 @@ check_content() {
   fi
 }
 
+check_submodule() {
+  local name="$1"
+  local path="$2"
+  local expect_contains="$3"
+  local tmpfile=$(mktemp)
+
+  printf "%-60s " "$name"
+  
+  curl -sL --max-time 90 "$BASE_URL/$path" > "$tmpfile" 2>/dev/null
+  if grep -qF "$expect_contains" "$tmpfile"; then
+    echo "✓ (contains '$expect_contains')"
+  else
+    echo "✗ expected to contain '$expect_contains'"
+    FAILED=1
+  fi
+  rm -f "$tmpfile"
+}
+
 echo "=== Basic redirects ==="
 check "Whole repo (no https)" \
   "github.com/o-az/2md" \
@@ -123,6 +141,24 @@ check_content "File with multiple dots" \
 check "Repo with hyphen in owner/name" \
   "github.com/o-az/2md" \
   "gh_o-az_2md@main.md"
+
+echo ""
+echo "=== Submodules support ==="
+check_content "Submodules param on repo with submodules" \
+  "github.com/foundry-rs/forge-std?submodules=true" \
+  "forge-std"
+
+check_submodule "Submodules param returns submodule content" \
+  "github.com/transmissions11/solmate?submodules=true" \
+  "# Submodule: lib/ds-test"
+
+check_content "No submodules param = no submodule content" \
+  "github.com/transmissions11/solmate" \
+  "solmate"
+
+check_submodule "Clean path with submodules" \
+  "gh_transmissions11_solmate@main.md?submodules=true" \
+  "# Submodule: lib/ds-test"
 
 echo ""
 echo "=== Utility endpoints ==="
