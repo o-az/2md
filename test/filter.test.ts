@@ -1,34 +1,38 @@
 import { describe, expect, test } from 'vitest'
-import { applyFilters, matchesPattern, parseFilterParam } from '#filter.ts'
+import { applyFilters, matchesPattern, parseFilterParams } from '#filter.ts'
 import type { GitHubFile } from '#github.ts'
 
-describe('parseFilterParam', () => {
+describe('parseFilterParams', () => {
   test('returns empty array for undefined/empty', () => {
-    expect(parseFilterParam(undefined)).toEqual([])
-    expect(parseFilterParam('')).toEqual([])
-    expect(parseFilterParam('   ')).toEqual([])
+    expect(parseFilterParams(undefined)).toEqual([])
+    expect(parseFilterParams([])).toEqual([])
+    expect(parseFilterParams(['', '   '])).toEqual([])
   })
 
   test('parses single pattern', () => {
-    expect(parseFilterParam('.test.ts')).toEqual(['.test.ts'])
-    expect(parseFilterParam('{.test.ts}')).toEqual(['.test.ts'])
+    expect(parseFilterParams(['.test.ts'])).toEqual(['.test.ts'])
+    expect(parseFilterParams(['{.test.ts}'])).toEqual(['.test.ts'])
   })
 
-  test('parses multiple patterns with braces', () => {
-    expect(parseFilterParam('{.test.ts,.spec.ts}')).toEqual([
+  test('parses multiple query params', () => {
+    expect(parseFilterParams(['.test.ts', '.spec.ts'])).toEqual([
       '.test.ts',
       '.spec.ts',
     ])
   })
 
-  test('trims whitespace and filters empty', () => {
-    expect(parseFilterParam('{ .test.ts , .spec.ts }')).toEqual([
+  test('parses brace syntax', () => {
+    expect(parseFilterParams(['{.test.ts,.spec.ts}'])).toEqual([
       '.test.ts',
       '.spec.ts',
     ])
-    expect(parseFilterParam('{.test.ts,,,.spec.ts}')).toEqual([
+  })
+
+  test('combines multiple params with brace syntax', () => {
+    expect(parseFilterParams(['{.test.ts,.spec.ts}', '.e2e.ts'])).toEqual([
       '.test.ts',
       '.spec.ts',
+      '.e2e.ts',
     ])
   })
 })
@@ -69,8 +73,17 @@ describe('applyFilters', () => {
     expect(applyFilters(mockFiles, undefined, undefined)).toEqual(mockFiles)
   })
 
-  test('exclude patterns', () => {
-    const result = applyFilters(mockFiles, '{.test.ts,.spec.ts}', undefined)
+  test('exclude with brace syntax', () => {
+    const result = applyFilters(mockFiles, ['{.test.ts,.spec.ts}'], undefined)
+    expect(result.map(f => f.path)).toEqual([
+      'src/index.ts',
+      'src/utils/helper.ts',
+      'README.md',
+    ])
+  })
+
+  test('exclude with multiple query params', () => {
+    const result = applyFilters(mockFiles, ['.test.ts', '.spec.ts'], undefined)
     expect(result.map(f => f.path)).toEqual([
       'src/index.ts',
       'src/utils/helper.ts',
@@ -79,7 +92,7 @@ describe('applyFilters', () => {
   })
 
   test('include patterns', () => {
-    const result = applyFilters(mockFiles, undefined, '{src/utils/}')
+    const result = applyFilters(mockFiles, undefined, ['src/utils/'])
     expect(result.map(f => f.path)).toEqual([
       'src/utils/helper.ts',
       'src/utils/helper.spec.ts',
@@ -87,7 +100,7 @@ describe('applyFilters', () => {
   })
 
   test('include then exclude', () => {
-    const result = applyFilters(mockFiles, '{.test.ts,.spec.ts}', '{.ts}')
+    const result = applyFilters(mockFiles, ['.test.ts', '.spec.ts'], ['.ts'])
     expect(result.map(f => f.path)).toEqual([
       'src/index.ts',
       'src/utils/helper.ts',

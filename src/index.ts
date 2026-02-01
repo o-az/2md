@@ -159,8 +159,8 @@ app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
 
   files = applyFilters(
     files,
-    context.req.query('exclude'),
-    context.req.query('include'),
+    context.req.queries('exclude'),
+    context.req.queries('include'),
   )
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
@@ -252,8 +252,8 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
 
   files = applyFilters(
     files,
-    context.req.query('exclude'),
-    context.req.query('include'),
+    context.req.queries('exclude'),
+    context.req.queries('include'),
   )
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))

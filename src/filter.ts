@@ -1,21 +1,27 @@
 import type { GitHubFile } from '#github.ts'
 
 /**
- * Parse filter patterns from brace syntax: `{.test.ts,.spec.ts}` → ['.test.ts', '.spec.ts']
+ * Parse filter patterns from:
+ * - Brace syntax: `{.test.ts,.spec.ts}` → ['.test.ts', '.spec.ts']
+ * - Multiple query params: `['A', 'B']` → ['A', 'B']
  */
-export function parseFilterParam(value: string | undefined): string[] {
-  if (!value?.trim()) return []
-  const trimmed = value.trim()
+export function parseFilterParams(values: string[] | undefined): string[] {
+  if (!values?.length) return []
 
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    return trimmed
-      .slice(1, -1)
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean)
-  }
+  return values.flatMap(value => {
+    const trimmed = value.trim()
+    if (!trimmed) return []
 
-  return [trimmed]
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      return trimmed
+        .slice(1, -1)
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+    }
+
+    return [trimmed]
+  })
 }
 
 /**
@@ -56,11 +62,11 @@ export function matchesPattern(filePath: string, pattern: string): boolean {
  */
 export function applyFilters(
   files: GitHubFile[],
-  exclude: string | undefined,
-  include: string | undefined,
+  exclude: string[] | undefined,
+  include: string[] | undefined,
 ): GitHubFile[] {
-  const includePatterns = parseFilterParam(include)
-  const excludePatterns = parseFilterParam(exclude)
+  const includePatterns = parseFilterParams(include)
+  const excludePatterns = parseFilterParams(exclude)
 
   let result = files
 
