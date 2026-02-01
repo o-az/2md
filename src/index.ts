@@ -20,6 +20,7 @@ import {
 import { landingApp } from '#landing.tsx'
 import { AI_USER_AGENTS, IGNORE_FILES } from '#constants.ts'
 import { parseCleanPath, toCleanPath } from '#url.ts'
+import { applyFilters } from '#filter.ts'
 
 function isAiBot(userAgent: string | undefined): boolean {
   if (!userAgent) return false
@@ -121,15 +122,16 @@ app.get('/purge', async context => {
   })
 })
 
-app.route('/', landingApp)
-
 const cacheMiddleware = except(
-  c => env.DISABLE_CACHE === 'true',
+  _ => env.DISABLE_CACHE === 'true',
   cache({
     cacheName: '2md',
     cacheControl: cacheHeader({ public: true, maxAge: '5 minutes' }),
   }),
 )
+
+app.use('/', cacheMiddleware)
+app.route('/', landingApp)
 
 app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
   const cleanPath = context.req.param('cleanPath')
@@ -156,6 +158,11 @@ app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
 
   if (path) files = filterByDirectory(files, path)
 
+  files = applyFilters(
+    files,
+    context.req.queries('exclude'),
+    context.req.queries('include'),
+  )
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
 
@@ -244,6 +251,11 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   if (parsed.type === 'directory' && path)
     files = filterByDirectory(files, path)
 
+  files = applyFilters(
+    files,
+    context.req.queries('exclude'),
+    context.req.queries('include'),
+  )
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
 
