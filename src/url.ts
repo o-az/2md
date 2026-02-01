@@ -16,13 +16,14 @@ export function toCleanPath(
   branch: string,
   path: string | undefined,
   isFile: boolean = false,
+  extension: 'md' | 'txt' = 'md',
 ): string {
   const prefix = isFile ? 'ghf' : 'gh'
   const parts = [prefix, owner, `${repo}@${encodeBranch(branch)}`]
   if (path) {
     parts.push(...path.split('/'))
   }
-  return `/${parts.join('_')}.md`
+  return `/${parts.join('_')}.${extension}`
 }
 
 export function parseCleanPath(cleanPath: string): {
@@ -31,14 +32,19 @@ export function parseCleanPath(cleanPath: string): {
   branch: string
   path?: string
   isFile: boolean
+  extension: 'md' | 'txt'
 } | null {
+  const isMd = cleanPath.endsWith('.md')
+  const isTxt = cleanPath.endsWith('.txt')
   if (
     (!cleanPath.startsWith('gh_') && !cleanPath.startsWith('ghf_')) ||
-    !cleanPath.endsWith('.md')
+    (!isMd && !isTxt)
   )
     return null
   const isFile = cleanPath.startsWith('ghf_')
-  const withoutExt = cleanPath.slice(0, -3)
+  const extension: 'md' | 'txt' = isTxt ? 'txt' : 'md'
+  const extLength = extension.length + 1
+  const withoutExt = cleanPath.slice(0, -extLength)
   const parts = withoutExt.split('_')
   if (parts.length < 3) return null
   const [, owner, repoWithBranch, ...rest] = parts
@@ -57,5 +63,6 @@ export function parseCleanPath(cleanPath: string): {
     branch,
     path: rest.length > 0 ? rest.join('/') : undefined,
     isFile,
+    extension,
   }
 }

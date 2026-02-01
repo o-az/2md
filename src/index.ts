@@ -18,8 +18,25 @@ import {
   fetchSubmodules,
 } from '#github.ts'
 import { landingApp } from '#landing.tsx'
-import { IGNORE_FILES } from '#constants.ts'
+import { AI_USER_AGENTS, IGNORE_FILES } from '#constants.ts'
 import { parseCleanPath, toCleanPath } from '#url.ts'
+
+function isAiBot(userAgent: string | undefined): boolean {
+  if (!userAgent) return false
+  return AI_USER_AGENTS.some(agent =>
+    userAgent.toLowerCase().includes(agent.toLowerCase()),
+  )
+}
+
+function getContentType(
+  extension: 'md' | 'txt',
+  userAgent: string | undefined,
+): string {
+  if (extension === 'txt' || isAiBot(userAgent)) {
+    return 'text/plain; charset=utf-8'
+  }
+  return 'text/markdown; charset=utf-8'
+}
 
 export const app = new Hono<{ Bindings: Cloudflare.Env }>()
 
@@ -27,7 +44,7 @@ app.use('/:path{.+}', async (c, next) => {
   const urlPath = c.req.param('path')
   if (
     (urlPath.startsWith('gh_') || urlPath.startsWith('ghf_')) &&
-    urlPath.endsWith('.md')
+    (urlPath.endsWith('.md') || urlPath.endsWith('.txt'))
   ) {
     return next()
   }
@@ -114,20 +131,22 @@ const cacheMiddleware = except(
   }),
 )
 
-app.get('/:cleanPath{ghf?_.+\\.md}', cacheMiddleware, async context => {
+app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
   const cleanPath = context.req.param('cleanPath')
   const parsed = parseCleanPath(cleanPath)
   if (!parsed) {
     throw new HTTPException(400, { message: 'Invalid path format' })
   }
 
-  const { owner, repo, branch, path, isFile } = parsed
+  const { owner, repo, branch, path, isFile, extension } = parsed
   const includeSubmodules = context.req.query('submodules') === 'true'
+  const userAgent = context.req.header('user-agent')
+  const contentType = getContentType(extension, userAgent)
 
   if (isFile && path) {
     const content = await getFileContent(owner, repo, branch, path)
     return context.text(content, 200, {
-      'Content-Type': 'text/markdown; charset=utf-8',
+      'Content-Type': contentType,
     })
   }
 
@@ -179,7 +198,7 @@ app.get('/:cleanPath{ghf?_.+\\.md}', cacheMiddleware, async context => {
   }
 
   return context.text(markdown, 200, {
-    'Content-Type': 'text/markdown; charset=utf-8',
+    'Content-Type': contentType,
   })
 })
 
@@ -188,6 +207,8 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   const githubUrl = urlPath.startsWith('http') ? urlPath : `https://${urlPath}`
   const parsed = parseGitHubUrl(githubUrl)
   const includeSubmodules = context.req.query('submodules') === 'true'
+  const userAgent = context.req.header('user-agent')
+  const contentType = getContentType('md', userAgent)
 
   let branch = parsed.branch
   let path = parsed.path
@@ -212,7 +233,7 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
       path!,
     )
     return context.text(content, 200, {
-      'Content-Type': 'text/markdown; charset=utf-8',
+      'Content-Type': contentType,
     })
   }
 
@@ -270,7 +291,7 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   }
 
   return context.text(markdown, 200, {
-    'Content-Type': 'text/markdown; charset=utf-8',
+    'Content-Type': contentType,
   })
 })
 
