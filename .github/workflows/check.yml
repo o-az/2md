@@ -32,11 +32,15 @@ jobs:
         with:
           version: latest
 
-      - name: "Format & Lint"
-        run: biome ci .
+      - name: "Format & Lint, & Type Check"
+        run: |
+          biome ci .
+          bun x oxlint@latest --type-aware --type-check
 
-      - name: "Type Check"
-        run: bun tsgo --project tsconfig.json --noEmit
+      - name: "Test"
+        run: bun vitest --coverage
 
       - name: "Build"
-        run: bun run build
+        env:
+          NODE_ENV: 'production'
+        run: bun vite build --mode='production'

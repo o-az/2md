@@ -33,7 +33,9 @@
     "forceConsistentCasingInFileNames": true,
     "types": [
       "bun",
-      "node"
+      "node",
+      "vite/client",
+      "typed-query-selector/strict"
     ]
   },
   "include": [
@@ -43,9 +45,6 @@
   "files": [
     "env.d.ts",
     "reset.d.ts",
-    "biome.json",
-    "package.json",
-    "wrangler.json",
     "vite.config.ts",
     "vitest.config.ts",
     "worker-configuration.d.ts"

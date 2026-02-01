@@ -29,6 +29,9 @@
   "[markdown]": {
     "editor.defaultFormatter": "yzhang.markdown-all-in-one"
   },
+  "markdownlint.config": {
+    "no-bare-urls": false
+  },
   "files.exclude": {
     ".wrangler": true
   },

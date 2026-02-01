@@ -125,7 +125,7 @@ app.get('/purge', async context => {
 app.route('/', landingApp)
 
 const cacheMiddleware = except(
-  c => env.DISABLE_CACHE === 'true',
+  _ => env.DISABLE_CACHE === 'true',
   cache({
     cacheName: '2md',
     cacheControl: cacheHeader({ public: true, maxAge: '5 minutes' }),

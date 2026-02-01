@@ -225,7 +225,7 @@ landingApp.get('/', context =>
   ),
 )
 
-landingApp.get('/llms.txt', context =>
+landingApp.get('/llms.txt', _ =>
   proxy(
     'https://raw.githubusercontent.com/o-az/2md/refs/heads/main/.github/README.md',
   ),
