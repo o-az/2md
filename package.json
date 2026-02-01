@@ -13,7 +13,8 @@
   "imports": {
     "#*": "./src/*",
     "#package.json": "./package.json",
-    "#wrangler.json": "./wrangler.json"
+    "#wrangler.json": "./wrangler.json",
+    "#README.md": "./.github/README.md"
   },
   "scripts": {
     "dev": "vite",

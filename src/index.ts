@@ -122,8 +122,6 @@ app.get('/purge', async context => {
   })
 })
 
-app.route('/', landingApp)
-
 const cacheMiddleware = except(
   _ => env.DISABLE_CACHE === 'true',
   cache({
@@ -131,6 +129,9 @@ const cacheMiddleware = except(
     cacheControl: cacheHeader({ public: true, maxAge: '5 minutes' }),
   }),
 )
+
+app.use('/', cacheMiddleware)
+app.route('/', landingApp)
 
 app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
   const cleanPath = context.req.param('cleanPath')

@@ -1,17 +1,13 @@
 import { Hono } from 'hono'
 import { marked } from 'marked'
-import { proxy } from 'hono/proxy'
 import { html, raw } from 'hono/html'
 
+import readmeContent from '#README.md?raw'
 import packageJSON from '#package.json' with { type: 'json' }
 
 const landingApp = new Hono<{ Bindings: Cloudflare.Env }>()
 
-const README_URL =
-  'https://raw.githubusercontent.com/o-az/2md/refs/heads/main/.github/README.md'
-
 // TODO: more head tags
-
 const Layout = (props: { parsedMarkdown: string }) => html`
   <html>
     <head>
@@ -21,22 +17,20 @@ const Layout = (props: { parsedMarkdown: string }) => html`
       <meta property="og:type" content="article">
       <meta property="og:title" content="${packageJSON.name}">
     </head>
-    <body style="font-family: monospace;">
+    <body style="font-family: monospace; max-width: 800px; margin: 0 auto; padding: 2rem;">
       ${props.parsedMarkdown}
     </body>
   </html>
 `
 
-landingApp.get('/', async context => {
-  const readmeRequest = await fetch(README_URL)
-  const readme = await readmeRequest.text()
+const parsedReadme = marked.parse(readmeContent)
 
-  const parsedHtml = await marked.parse(readme)
+landingApp.get('/', async context =>
+  context.html(<Layout parsedMarkdown={raw(await parsedReadme)} />),
+)
 
-  return context.html(<Layout parsedMarkdown={raw(parsedHtml)} />)
-})
+landingApp.get('/llms.txt', context => context.text(readmeContent))
 
-landingApp.get('/llms.txt', () => proxy(README_URL))
-landingApp.get('/llms-full.txt', () => proxy(README_URL))
+landingApp.get('/llms-full.txt', context => context.text(readmeContent))
 
 export { landingApp }
