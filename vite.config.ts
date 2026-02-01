@@ -18,10 +18,13 @@ export default defineConfig(config => {
   const envFlags = envSchema.safeParse(env)
   if (!envFlags.success) throw new Error(z.prettifyError(envFlags.error))
 
+  const allowedHosts = env?.ALLOWED_HOSTS?.split(',') || []
+
   return {
     plugins: [cloudflare()],
     server: {
       port: envFlags.data.PORT,
+      allowedHosts,
     },
   }
 })

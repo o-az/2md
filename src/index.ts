@@ -20,6 +20,7 @@ import {
 import { landingApp } from '#landing.tsx'
 import { AI_USER_AGENTS, IGNORE_FILES } from '#constants.ts'
 import { parseCleanPath, toCleanPath } from '#url.ts'
+import { applyFilters } from '#filter.ts'
 
 function isAiBot(userAgent: string | undefined): boolean {
   if (!userAgent) return false
@@ -156,6 +157,11 @@ app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
 
   if (path) files = filterByDirectory(files, path)
 
+  files = applyFilters(
+    files,
+    context.req.query('exclude'),
+    context.req.query('include'),
+  )
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
 
@@ -244,6 +250,11 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   if (parsed.type === 'directory' && path)
     files = filterByDirectory(files, path)
 
+  files = applyFilters(
+    files,
+    context.req.query('exclude'),
+    context.req.query('include'),
+  )
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
 

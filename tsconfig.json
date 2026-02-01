@@ -37,7 +37,8 @@
     ]
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "test/**/*"
   ],
   "files": [
     "env.d.ts",
@@ -46,6 +47,7 @@
     "package.json",
     "wrangler.json",
     "vite.config.ts",
+    "vitest.config.ts",
     "worker-configuration.d.ts"
   ],
   "exclude": [
