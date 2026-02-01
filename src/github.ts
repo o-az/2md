@@ -1,6 +1,6 @@
 const UNGH_BASE = 'https://ungh.cc'
-const RAW_GITHUB_BASE = 'https://raw.githubusercontent.com'
 const GITHUB_API_BASE = 'https://api.github.com'
+const RAW_GITHUB_BASE = 'https://raw.githubusercontent.com'
 
 export interface GitHubFile {
   path: string

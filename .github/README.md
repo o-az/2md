@@ -38,17 +38,43 @@ Fetches the repo plus all git submodules (e.g., `lib/forge-std`, `lib/openzeppel
 
 Use `exclude` and `include` query params to filter files.
 
-- excludes all files ending in `.test.ts`: `?exclude=.test.ts`
-- excludes all files ending in `.test.ts` and all files ending in `.spec.ts`: `?exclude=.test.ts&exclude=.spec.ts`
-- include only jsx/tsx files: `?include=.jsx&include=.tsx`
-- include TypeScript, exclude tests: `?include=.ts&exclude=.test.ts`
+- excludes all files ending in `.test.ts`:
+
+  ```sh
+  ?exclude=.test.ts
+  ```
+
+- excludes all files ending in `.test.ts` and all files ending in `.spec.ts`:
+
+  ```sh
+  ?exclude=.test.ts&exclude=.spec.ts
+  ```
+
+- include only jsx/tsx files:
+
+  ```sh
+  ?include=.jsx&include=.tsx
+  ```
+
+- include TypeScript, exclude tests:
+
+  ```sh
+  ?include=.ts&exclude=.test.ts
+  ```
 
 ### Supported patterns
 
-- `.test.ts` — suffix match
+<!-- - `.test.ts` — suffix match
 - `src/` — directory match
 - `*.test.*` — glob wildcard
-- `test` — contains match
+- `test` — contains match -->
+
+| pattern    | description     |
+|------------|-----------------|
+| `.test.ts` | suffix match    |
+| `src/`     | directory match |
+| `*.test.*` | glob wildcard   |
+| `test`     | contains match  |
 
 ## CLI
 

@@ -25,8 +25,8 @@ const Layout = (props: { parsedMarkdown: string }) => html`
 
 const parsedReadme = marked.parse(readmeContent)
 
-landingApp.get('/', async context =>
-  context.html(<Layout parsedMarkdown={raw(await parsedReadme)} />),
+landingApp.get('/', context =>
+  context.html(<Layout parsedMarkdown={raw(parsedReadme)} />),
 )
 
 landingApp.get('/llms.txt', context => context.text(readmeContent))
