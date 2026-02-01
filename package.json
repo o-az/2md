@@ -1,5 +1,6 @@
 {
   "name": "2md",
+  "description": "Converts GitHub repositories, directories, or specific files into a single markdown document for easy consumption by LLMs or documentation tools.",
   "version": "0.0.0",
   "type": "module",
   "repository": "github:o-az/2md",
@@ -27,6 +28,7 @@
   },
   "dependencies": {
     "hono": "^4.11.7",
+    "marked": "^17.0.1",
     "pretty-cache-header": "^1.0.0",
     "zod": "^4.3.6"
   },

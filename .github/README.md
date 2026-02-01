@@ -1,6 +1,8 @@
 # [2md](https://2md.sauce.wiki)
 
-Converts GitHub repositories, directories, or specific files into a single markdown document for easy consumption by LLMs or documentation tools.
+Converts GitHub repo, directory, or specific files into a single markdown document.
+
+Give it to your agent and awatch it rip 💨
 
 ## The URL
 
@@ -31,6 +33,22 @@ Generates: [2md.sauce.wiki/ghf_vercel-labs_json-render_README.md](https://2md.sa
 https://2md.sauce.wiki/github.com/transmissions11/solmate?submodules=true
 
 Fetches the repo plus all git submodules (e.g., `lib/forge-std`, `lib/openzeppelin-contracts`).
+
+## Filtering
+
+Use `exclude` and `include` query params to filter files.
+
+- excludes all files ending in `.test.ts`: `?exclude=.test.ts`
+- excludes all files ending in `.test.ts` and all files ending in `.spec.ts`: `?exclude=.test.ts&exclude=.spec.ts`
+- include only jsx/tsx files: `?include=.jsx&include=.tsx`
+- include TypeScript, exclude tests: `?include=.ts&exclude=.test.ts`
+
+### Supported patterns
+
+- `.test.ts` — suffix match
+- `src/` — directory match
+- `*.test.*` — glob wildcard
+- `test` — contains match
 
 ## CLI
 
