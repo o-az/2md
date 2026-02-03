@@ -159,11 +159,15 @@ app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
       })
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to fetch file'
-      const status = message.includes('404')
-        ? 404
-        : message.includes('rate limit')
-          ? 429
-          : 500
+      const status =
+        message.includes('404') || message.includes('Not Found')
+          ? 404
+          : message.includes('rate limit') || message.includes('429')
+            ? 429
+            : message.includes('Network error') ||
+                message.includes('fetch failed')
+              ? 503
+              : 500
       throw new HTTPException(status, { message })
     }
   }
@@ -285,11 +289,15 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
       })
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to fetch file'
-      const status = message.includes('404')
-        ? 404
-        : message.includes('rate limit')
-          ? 429
-          : 500
+      const status =
+        message.includes('404') || message.includes('Not Found')
+          ? 404
+          : message.includes('rate limit') || message.includes('429')
+            ? 429
+            : message.includes('Network error') ||
+                message.includes('fetch failed')
+              ? 503
+              : 500
       throw new HTTPException(status, { message })
     }
   }

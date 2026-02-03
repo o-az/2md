@@ -116,7 +116,15 @@ async function getRepoFilesFromUngh(
   branch: string,
 ): Promise<Array<GitHubFile>> {
   const url = `${UNGH_BASE}/repos/${owner}/${repo}/files/${encodeURIComponent(branch)}`
-  const response = await fetch(url)
+  let response: Response
+  try {
+    response = await fetch(url)
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    throw new Error(
+      `Network error fetching files from ungh for ${owner}/${repo}@${branch}: ${errorMsg}`,
+    )
+  }
   if (!response.ok) {
     if (response.status === 403 || response.status === 429) {
       throw new Error(
@@ -150,7 +158,15 @@ async function getRepoFilesFromGitHub(
   branch: string,
 ): Promise<Array<GitHubFile>> {
   const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`
-  const response = await fetch(url, { headers: { 'User-Agent': '2md' } })
+  let response: Response
+  try {
+    response = await fetch(url, { headers: { 'User-Agent': '2md' } })
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    throw new Error(
+      `Network error fetching files from GitHub API for ${owner}/${repo}@${branch}: ${errorMsg}`,
+    )
+  }
   if (!response.ok) {
     const errorText = await response.text().catch(() => '')
     throw new Error(
@@ -216,7 +232,22 @@ export async function getFileContent(
   let lastError: Error | null = null
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const response = await fetch(url)
+      let response: Response
+      try {
+        response = await fetch(url)
+      } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : String(e)
+        if (attempt < retries - 1) {
+          lastError = new Error(
+            `Network error fetching file (attempt ${attempt + 1}/${retries}) for ${owner}/${repo}@${branch}/${path}: ${errorMsg}`,
+          )
+          await new Promise(r => setTimeout(r, 100 * 2 ** attempt))
+          continue
+        }
+        throw new Error(
+          `Network error fetching file for ${owner}/${repo}@${branch}/${path}: ${errorMsg}`,
+        )
+      }
       if (response.ok) return response.text()
       if (response.status === 429 || response.status >= 500) {
         const errorText = await response.text().catch(() => '')
@@ -233,13 +264,21 @@ export async function getFileContent(
     } catch (e) {
       if (
         e instanceof Error &&
-        (e.message.includes('429') || e.message.includes('500'))
+        (e.message.includes('429') ||
+          e.message.includes('500') ||
+          e.message.includes('Network error'))
       ) {
-        lastError = e
-        await new Promise(r => setTimeout(r, 100 * 2 ** attempt))
-        continue
+        if (attempt < retries - 1) {
+          lastError = e
+          await new Promise(r => setTimeout(r, 100 * 2 ** attempt))
+          continue
+        }
       }
-      throw e
+      if (attempt === retries - 1) {
+        throw e
+      }
+      lastError = e instanceof Error ? e : new Error(String(e))
+      await new Promise(r => setTimeout(r, 100 * 2 ** attempt))
     }
   }
   throw (

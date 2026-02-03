@@ -65,6 +65,10 @@ describe('File handling', () => {
     const res = await fetchApp('github.com/o-az/2md/justfile', {
       followRedirects: true,
     })
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('just --list')
