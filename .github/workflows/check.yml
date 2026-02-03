@@ -2,7 +2,10 @@ name: Checks
 
 on:
   push:
+    branches:
+      - main
   pull_request:
+  workflow_dispatch:
 
 defaults:
   run:
@@ -37,10 +40,12 @@ jobs:
           biome ci .
           bun x oxlint@latest --type-aware --type-check
 
-      - name: "Test"
-        run: bun vitest --coverage
-
       - name: "Build"
         env:
           NODE_ENV: 'production'
         run: bun vite build --mode='production'
+
+      - name: "Test"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bun vitest --coverage

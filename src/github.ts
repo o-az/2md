@@ -115,14 +115,26 @@ async function getRepoFilesFromUngh(
   repo: string,
   branch: string,
 ): Promise<Array<GitHubFile>> {
-  const response = await fetch(
-    `${UNGH_BASE}/repos/${owner}/${repo}/files/${encodeURIComponent(branch)}`,
-  )
+  const url = `${UNGH_BASE}/repos/${owner}/${repo}/files/${encodeURIComponent(branch)}`
+  let response: Response
+  try {
+    response = await fetch(url)
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    throw new Error(
+      `Network error fetching files from ungh for ${owner}/${repo}@${branch}: ${errorMsg}`,
+    )
+  }
   if (!response.ok) {
     if (response.status === 403 || response.status === 429) {
-      throw new Error(`ungh rate limit: ${response.status}`)
+      throw new Error(
+        `ungh rate limit: ${response.status} for ${owner}/${repo}@${branch}`,
+      )
     }
-    throw new Error(`Failed to fetch files: ${response.status}`)
+    const errorText = await response.text().catch(() => '')
+    throw new Error(
+      `Failed to fetch files from ungh: ${response.status} ${response.statusText} for ${owner}/${repo}@${branch}${errorText ? ` - ${errorText.slice(0, 100)}` : ''}`,
+    )
   }
 
   const data = (await response.json()) as FilesResponse
@@ -145,12 +157,21 @@ async function getRepoFilesFromGitHub(
   repo: string,
   branch: string,
 ): Promise<Array<GitHubFile>> {
-  const response = await fetch(
-    `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`,
-    { headers: { 'User-Agent': '2md' } },
-  )
+  const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`
+  let response: Response
+  try {
+    response = await fetch(url, { headers: { 'User-Agent': '2md' } })
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    throw new Error(
+      `Network error fetching files from GitHub API for ${owner}/${repo}@${branch}: ${errorMsg}`,
+    )
+  }
   if (!response.ok) {
-    throw new Error(`GitHub API error: ${response.status}`)
+    const errorText = await response.text().catch(() => '')
+    throw new Error(
+      `GitHub API error: ${response.status} ${response.statusText} for ${owner}/${repo}@${branch}${errorText ? ` - ${errorText.slice(0, 100)}` : ''}`,
+    )
   }
 
   const data = (await response.json()) as GitHubTreeResponse
@@ -208,16 +229,64 @@ export async function getFileContent(
   const encodedPath = path.split('/').map(encodeURIComponent).join('/')
   const url = `${RAW_GITHUB_BASE}/${owner}/${repo}/${encodeURIComponent(branch)}/${encodedPath}`
 
+  let lastError: Error | null = null
   for (let attempt = 0; attempt < retries; attempt++) {
-    const response = await fetch(url)
-    if (response.ok) return response.text()
-    if (response.status === 429 || response.status >= 500) {
+    try {
+      let response: Response
+      try {
+        response = await fetch(url)
+      } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : String(e)
+        if (attempt < retries - 1) {
+          lastError = new Error(
+            `Network error fetching file (attempt ${attempt + 1}/${retries}) for ${owner}/${repo}@${branch}/${path}: ${errorMsg}`,
+          )
+          await new Promise(r => setTimeout(r, 100 * 2 ** attempt))
+          continue
+        }
+        throw new Error(
+          `Network error fetching file for ${owner}/${repo}@${branch}/${path}: ${errorMsg}`,
+        )
+      }
+      if (response.ok) return response.text()
+      if (response.status === 429 || response.status >= 500) {
+        const errorText = await response.text().catch(() => '')
+        lastError = new Error(
+          `Failed to fetch file (attempt ${attempt + 1}/${retries}): ${response.status} ${response.statusText} for ${owner}/${repo}@${branch}/${path}${errorText ? ` - ${errorText.slice(0, 100)}` : ''}`,
+        )
+        await new Promise(r => setTimeout(r, 100 * 2 ** attempt))
+        continue
+      }
+      const errorText = await response.text().catch(() => '')
+      throw new Error(
+        `Failed to fetch file: ${response.status} ${response.statusText} for ${owner}/${repo}@${branch}/${path}${errorText ? ` - ${errorText.slice(0, 100)}` : ''}`,
+      )
+    } catch (e) {
+      if (
+        e instanceof Error &&
+        (e.message.includes('429') ||
+          e.message.includes('500') ||
+          e.message.includes('Network error'))
+      ) {
+        if (attempt < retries - 1) {
+          lastError = e
+          await new Promise(r => setTimeout(r, 100 * 2 ** attempt))
+          continue
+        }
+      }
+      if (attempt === retries - 1) {
+        throw e
+      }
+      lastError = e instanceof Error ? e : new Error(String(e))
       await new Promise(r => setTimeout(r, 100 * 2 ** attempt))
-      continue
     }
-    throw new Error(`Failed to fetch file: ${response.status}`)
   }
-  throw new Error(`Failed to fetch file after ${retries} retries`)
+  throw (
+    lastError ||
+    new Error(
+      `Failed to fetch file after ${retries} retries: ${owner}/${repo}@${branch}/${path}`,
+    )
+  )
 }
 
 export async function fetchWithConcurrency<T, R>(

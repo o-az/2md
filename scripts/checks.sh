@@ -51,7 +51,7 @@ check_submodule() {
   local name="$1"
   local path="$2"
   local expect_contains="$3"
-  local tmpfile=$(mktemp)
+  local tmpfile="$(mktemp)"
 
   printf "%-60s " "$name"
   
@@ -159,6 +159,48 @@ check_content "No submodules param = no submodule content" \
 check_submodule "Clean path with submodules" \
   "gh_transmissions11_solmate@main.md?submodules=true" \
   "# Submodule: lib/ds-test"
+
+echo ""
+echo "=== Include/Exclude filters ==="
+check_content "Exclude single pattern" \
+  "github.com/o-az/2md?exclude=.ts" \
+  "justfile"
+
+check_content "Exclude brace syntax" \
+  "github.com/o-az/2md?exclude={.ts,.tsx}" \
+  "biome.json"
+
+check_content "Include single pattern" \
+  "github.com/o-az/2md?include=.json" \
+  "package.json"
+
+check_content "Include brace syntax" \
+  "github.com/o-az/2md?include={.json,.toml}" \
+  "biome.json"
+
+check_content "Include directory" \
+  "github.com/o-az/2md?include=src/" \
+  "src/index.ts"
+
+check_content "Include then exclude" \
+  "github.com/o-az/2md?include=src/&exclude=landing" \
+  "src/index.ts"
+
+check_content "Multiple exclude params" \
+  "github.com/o-az/2md?exclude=.ts&exclude=.json" \
+  "justfile"
+
+check_content "Glob pattern exclude" \
+  "github.com/o-az/2md/src?exclude=*.test.*" \
+  "index.ts"
+
+check_content "Clean path with exclude" \
+  "gh_o-az_2md@main.md?exclude=.ts" \
+  "justfile"
+
+check_content "Clean path with include" \
+  "gh_o-az_2md@main_src.md?include=.tsx" \
+  "landing.tsx"
 
 echo ""
 echo "=== Utility endpoints ==="

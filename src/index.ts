@@ -12,6 +12,7 @@ import {
   parseGitHubUrl,
   getFileContent,
   type GitHubFile,
+  type SubmoduleContent,
   filterByDirectory,
   resolveBranchAndPath,
   fetchWithConcurrency,
@@ -62,15 +63,20 @@ app.use('/:path{.+}', async (c, next) => {
     let path = parsed.path
 
     if (!branch) {
-      const segments = path ? path.split('/') : []
-      const resolved = await resolveBranchAndPath(
-        parsed.owner,
-        parsed.repo,
-        segments,
-        c.env.GITHUB_TOKEN,
-      )
-      branch = resolved.branch
-      path = resolved.path
+      try {
+        const segments = path ? path.split('/') : []
+        const resolved = await resolveBranchAndPath(
+          parsed.owner,
+          parsed.repo,
+          segments,
+          c.env.GITHUB_TOKEN,
+        )
+        branch = resolved.branch
+        path = resolved.path
+      } catch {
+        // If resolving fails, continue to next handler
+        return next()
+      }
     }
 
     const cleanPath = toCleanPath(
@@ -146,13 +152,39 @@ app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
   const contentType = getContentType(extension, userAgent)
 
   if (isFile && path) {
-    const content = await getFileContent(owner, repo, branch, path)
-    return context.text(content, 200, {
-      'Content-Type': contentType,
-    })
+    try {
+      const content = await getFileContent(owner, repo, branch, path)
+      return context.text(content, 200, {
+        'Content-Type': contentType,
+      })
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to fetch file'
+      const status =
+        message.includes('404') || message.includes('Not Found')
+          ? 404
+          : message.includes('rate limit') || message.includes('429')
+            ? 429
+            : message.includes('Network error') ||
+                message.includes('fetch failed')
+              ? 503
+              : 500
+      throw new HTTPException(status, { message })
+    }
   }
 
-  const allFiles = await getRepoFiles(owner, repo, branch)
+  let allFiles: Array<GitHubFile>
+  try {
+    allFiles = await getRepoFiles(owner, repo, branch)
+  } catch (e) {
+    const message =
+      e instanceof Error ? e.message : 'Failed to fetch repository files'
+    const status = message.includes('404')
+      ? 404
+      : message.includes('rate limit')
+        ? 429
+        : 500
+    throw new HTTPException(status, { message })
+  }
 
   let files: Array<GitHubFile> = allFiles
 
@@ -182,12 +214,13 @@ app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
   let markdown = `# ${owner}/${repo}@${branch}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
 
   if (includeSubmodules && !path) {
-    const submoduleResults = await fetchSubmodules(
-      owner,
-      repo,
-      branch,
-      allFiles,
-    )
+    let submoduleResults: Array<SubmoduleContent>
+    try {
+      submoduleResults = await fetchSubmodules(owner, repo, branch, allFiles)
+    } catch {
+      // Continue without submodules if fetching fails
+      submoduleResults = []
+    }
 
     for (const result of submoduleResults) {
       if (result.error) {
@@ -221,30 +254,67 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   let path = parsed.path
 
   if (!branch) {
-    const segments = path ? path.split('/') : []
-    const resolved = await resolveBranchAndPath(
-      parsed.owner,
-      parsed.repo,
-      segments,
-      context.env.GITHUB_TOKEN,
-    )
-    branch = resolved.branch
-    path = resolved.path
+    try {
+      const segments = path ? path.split('/') : []
+      const resolved = await resolveBranchAndPath(
+        parsed.owner,
+        parsed.repo,
+        segments,
+        context.env.GITHUB_TOKEN,
+      )
+      branch = resolved.branch
+      path = resolved.path
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : 'Failed to resolve branch'
+      const status = message.includes('404')
+        ? 404
+        : message.includes('rate limit')
+          ? 429
+          : 500
+      throw new HTTPException(status, { message })
+    }
   }
 
   if (parsed.type === 'file') {
-    const content = await getFileContent(
-      parsed.owner,
-      parsed.repo,
-      branch,
-      path!,
-    )
-    return context.text(content, 200, {
-      'Content-Type': contentType,
-    })
+    try {
+      const content = await getFileContent(
+        parsed.owner,
+        parsed.repo,
+        branch,
+        path!,
+      )
+      return context.text(content, 200, {
+        'Content-Type': contentType,
+      })
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to fetch file'
+      const status =
+        message.includes('404') || message.includes('Not Found')
+          ? 404
+          : message.includes('rate limit') || message.includes('429')
+            ? 429
+            : message.includes('Network error') ||
+                message.includes('fetch failed')
+              ? 503
+              : 500
+      throw new HTTPException(status, { message })
+    }
   }
 
-  const allFiles = await getRepoFiles(parsed.owner, parsed.repo, branch)
+  let allFiles: Array<GitHubFile>
+  try {
+    allFiles = await getRepoFiles(parsed.owner, parsed.repo, branch)
+  } catch (e) {
+    const message =
+      e instanceof Error ? e.message : 'Failed to fetch repository files'
+    const status = message.includes('404')
+      ? 404
+      : message.includes('rate limit')
+        ? 429
+        : 500
+    throw new HTTPException(status, { message })
+  }
 
   let files: Array<GitHubFile> = allFiles
 
@@ -280,12 +350,18 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   let markdown = `# ${parsed.owner}/${parsed.repo}${path ? `/${path}` : ''}\n\n${contents.join('\n\n')}`
 
   if (includeSubmodules && !path) {
-    const submoduleResults = await fetchSubmodules(
-      parsed.owner,
-      parsed.repo,
-      branch,
-      allFiles,
-    )
+    let submoduleResults: Array<SubmoduleContent>
+    try {
+      submoduleResults = await fetchSubmodules(
+        parsed.owner,
+        parsed.repo,
+        branch,
+        allFiles,
+      )
+    } catch {
+      // Continue without submodules if fetching fails
+      submoduleResults = []
+    }
 
     for (const result of submoduleResults) {
       if (result.error) {
