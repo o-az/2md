@@ -78,6 +78,10 @@ describe('File handling', () => {
     const res = await fetchApp('github.com/o-az/2md/biome.json', {
       followRedirects: true,
     })
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('biomejs')
@@ -87,6 +91,10 @@ describe('File handling', () => {
     const res = await fetchApp('github.com/o-az/2md/src/index.ts', {
       followRedirects: true,
     })
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('Hono')
@@ -112,6 +120,10 @@ describe('Branch handling', () => {
     const res = await fetchApp('github.com/honojs/hono/tree/v4.0.0/src', {
       followRedirects: true,
     })
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('honojs/hono@v4.0.0')
@@ -121,21 +133,37 @@ describe('Branch handling', () => {
 describe('Clean path format', () => {
   test('clean path (repo)', async () => {
     const res = await fetchApp('gh_o-az_2md@main.md')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
   })
 
   test('clean path (directory)', async () => {
     const res = await fetchApp('gh_o-az_2md@main_src.md')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
   })
 
   test('clean path (file)', async () => {
     const res = await fetchApp('ghf_o-az_2md@main_justfile.md')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
   })
 
   test('clean path with tag', async () => {
     const res = await fetchApp('gh_honojs_hono@v4.0.0_src.md')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
   })
 })
@@ -145,6 +173,10 @@ describe('Edge cases', () => {
     const res = await fetchApp('github.com/o-az/2md/tree/main/.github', {
       followRedirects: true,
     })
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('.github')
@@ -154,6 +186,10 @@ describe('Edge cases', () => {
     const res = await fetchApp('github.com/o-az/2md/.env.example', {
       followRedirects: true,
     })
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('NODE_ENV')
@@ -172,6 +208,10 @@ describe('Submodules support', () => {
       'github.com/foundry-rs/forge-std?submodules=true',
       { followRedirects: true },
     )
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('forge-std')
@@ -182,6 +222,10 @@ describe('Submodules support', () => {
       'github.com/transmissions11/solmate?submodules=true',
       { followRedirects: true },
     )
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('# Submodule: lib/ds-test')
@@ -191,6 +235,10 @@ describe('Submodules support', () => {
     const res = await fetchApp('github.com/transmissions11/solmate', {
       followRedirects: true,
     })
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('solmate')
@@ -201,6 +249,10 @@ describe('Submodules support', () => {
     const res = await fetchApp(
       'gh_transmissions11_solmate@main.md?submodules=true',
     )
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('# Submodule: lib/ds-test')
@@ -210,6 +262,10 @@ describe('Submodules support', () => {
 describe('Include/Exclude filters', () => {
   test('exclude single pattern', async () => {
     const res = await fetchApp('gh_o-az_2md@main.md?exclude=.ts')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('justfile')
@@ -218,6 +274,10 @@ describe('Include/Exclude filters', () => {
 
   test('exclude brace syntax', async () => {
     const res = await fetchApp('gh_o-az_2md@main.md?exclude={.ts,.tsx}')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('biome.json')
@@ -226,6 +286,10 @@ describe('Include/Exclude filters', () => {
 
   test('include single pattern', async () => {
     const res = await fetchApp('gh_o-az_2md@main.md?include=.json')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('package.json')
@@ -234,6 +298,10 @@ describe('Include/Exclude filters', () => {
 
   test('include brace syntax', async () => {
     const res = await fetchApp('gh_o-az_2md@main.md?include={.json,.toml}')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('biome.json')
@@ -241,6 +309,10 @@ describe('Include/Exclude filters', () => {
 
   test('include directory', async () => {
     const res = await fetchApp('gh_o-az_2md@main.md?include=src/')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('src/index.ts')
@@ -252,6 +324,10 @@ describe('Include/Exclude filters', () => {
     url.searchParams.set('include', 'src/')
     url.searchParams.set('exclude', '.tsx')
     const res = await app.request(url.toString(), {}, env)
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('src/index.ts')
@@ -263,6 +339,10 @@ describe('Include/Exclude filters', () => {
     url.searchParams.append('exclude', '.ts')
     url.searchParams.append('exclude', '.json')
     const res = await app.request(url.toString(), {}, env)
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('justfile')
@@ -272,6 +352,10 @@ describe('Include/Exclude filters', () => {
 
   test('glob pattern exclude', async () => {
     const res = await fetchApp('gh_o-az_2md@main_src.md?exclude=*.test.*')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('index.ts')
@@ -279,6 +363,10 @@ describe('Include/Exclude filters', () => {
 
   test('clean path with exclude', async () => {
     const res = await fetchApp('gh_o-az_2md@main.md?exclude=.ts')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('justfile')
@@ -302,7 +390,11 @@ describe('Utility endpoints', () => {
   })
 
   test('root page', async () => {
-    const res = await app.request('http://localhost/', {}, env)
+    const res = await fetchApp('')
+    if (res.status !== 200) {
+      const text = await res.text()
+      console.error(`Unexpected status ${res.status}:`, text)
+    }
     expect(res.status).toBe(200)
   })
 

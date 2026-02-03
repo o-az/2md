@@ -3,6 +3,8 @@ import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config'
 export default defineWorkersConfig({
   test: {
     include: ['test/**/*.test.{ts,tsx}', 'test/**/*.spec.{ts,tsx}'],
+    // Longer timeout for network requests to GitHub API
+    testTimeout: 30_000,
     coverage: {
       provider: 'istanbul',
     },
