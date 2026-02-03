@@ -9,6 +9,12 @@ export default defineWorkersConfig({
     poolOptions: {
       workers: {
         wrangler: { configPath: './wrangler.json' },
+        miniflare: {
+          bindings: {
+            GITHUB_TOKEN: process.env.GITHUB_TOKEN ?? '',
+            DISABLE_CACHE: 'true',
+          },
+        },
       },
     },
   },

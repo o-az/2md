@@ -45,4 +45,6 @@ jobs:
         run: bun vite build --mode='production'
 
       - name: "Test"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bun vitest --coverage
