@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.13/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -46,6 +46,7 @@
   "formatter": {
     "enabled": true,
     "indentWidth": 2,
+    "lineWidth": 100,
     "indentStyle": "space",
     "bracketSameLine": true,
     "formatWithErrors": true,
@@ -144,14 +145,6 @@
         "formatter": {
           "lineWidth": 1
         },
-        "parser": {
-          "allowComments": true,
-          "allowTrailingCommas": true
-        }
-      }
-    },
-    {
-      "json": {
         "parser": {
           "allowComments": true,
           "allowTrailingCommas": true

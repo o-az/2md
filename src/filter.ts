@@ -71,15 +71,11 @@ export function applyFilters(
   let result = files
 
   if (includePatterns.length > 0) {
-    result = result.filter(f =>
-      includePatterns.some(p => matchesPattern(f.path, p)),
-    )
+    result = result.filter(f => includePatterns.some(p => matchesPattern(f.path, p)))
   }
 
   if (excludePatterns.length > 0) {
-    result = result.filter(
-      f => !excludePatterns.some(p => matchesPattern(f.path, p)),
-    )
+    result = result.filter(f => !excludePatterns.some(p => matchesPattern(f.path, p)))
   }
 
   return result

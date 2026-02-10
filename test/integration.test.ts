@@ -3,19 +3,14 @@ import { app } from '#index.ts'
 import { env } from 'cloudflare:test'
 import { describe, expect, test } from 'vitest'
 
-async function fetchApp(
-  path: string,
-  options?: { followRedirects?: boolean },
-): Promise<Response> {
+async function fetchApp(path: string, options?: { followRedirects?: boolean }): Promise<Response> {
   const url = path.startsWith('http') ? path : `http://localhost/${path}`
   const res = await app.request(url, { redirect: 'manual' }, env)
 
   if (options?.followRedirects && res.status >= 300 && res.status < 400) {
     const location = res.headers.get('location')
     if (location) {
-      const redirectUrl = location.startsWith('http')
-        ? location
-        : `http://localhost${location}`
+      const redirectUrl = location.startsWith('http') ? location : `http://localhost${location}`
       return app.request(redirectUrl, {}, env)
     }
   }
@@ -56,9 +51,7 @@ describe('File handling', () => {
   test('single file (blob)', async () => {
     const res = await fetchApp('github.com/o-az/2md/blob/main/justfile')
     expect(res.status).toBe(301)
-    expect(res.headers.get('location')).toContain(
-      'ghf_o-az_2md@main_justfile.md',
-    )
+    expect(res.headers.get('location')).toContain('ghf_o-az_2md@main_justfile.md')
   })
 
   test('file shorthand (justfile)', async () => {
@@ -111,9 +104,7 @@ describe('Branch handling', () => {
   test('tag as branch', async () => {
     const res = await fetchApp('github.com/honojs/hono/tree/v4.0.0/src')
     expect(res.status).toBe(301)
-    expect(res.headers.get('location')).toContain(
-      'gh_honojs_hono@v4.0.0_src.md',
-    )
+    expect(res.headers.get('location')).toContain('gh_honojs_hono@v4.0.0_src.md')
   })
 
   test('tag returns content with tag in header', async () => {
@@ -204,10 +195,9 @@ describe('Edge cases', () => {
 
 describe('Submodules support', () => {
   test('submodules param on repo with submodules', async () => {
-    const res = await fetchApp(
-      'github.com/foundry-rs/forge-std?submodules=true',
-      { followRedirects: true },
-    )
+    const res = await fetchApp('github.com/foundry-rs/forge-std?submodules=true', {
+      followRedirects: true,
+    })
     if (res.status !== 200) {
       const text = await res.text()
       console.error(`Unexpected status ${res.status}:`, text)
@@ -218,10 +208,9 @@ describe('Submodules support', () => {
   })
 
   test('submodules param returns submodule content', async () => {
-    const res = await fetchApp(
-      'github.com/transmissions11/solmate?submodules=true',
-      { followRedirects: true },
-    )
+    const res = await fetchApp('github.com/transmissions11/solmate?submodules=true', {
+      followRedirects: true,
+    })
     if (res.status !== 200) {
       const text = await res.text()
       console.error(`Unexpected status ${res.status}:`, text)
@@ -246,9 +235,7 @@ describe('Submodules support', () => {
   })
 
   test('clean path with submodules', async () => {
-    const res = await fetchApp(
-      'gh_transmissions11_solmate@main.md?submodules=true',
-    )
+    const res = await fetchApp('gh_transmissions11_solmate@main.md?submodules=true')
     if (res.status !== 200) {
       const text = await res.text()
       console.error(`Unexpected status ${res.status}:`, text)

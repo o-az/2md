@@ -12,51 +12,48 @@ import {
   parseGitHubUrl,
   getFileContent,
   type GitHubFile,
-  type SubmoduleContent,
+  fetchSubmodules,
   filterByDirectory,
   resolveBranchAndPath,
   fetchWithConcurrency,
-  fetchSubmodules,
+  type SubmoduleContent,
 } from '#github.ts'
 import { landingApp } from '#landing.tsx'
-import { AI_USER_AGENTS, IGNORE_FILES } from '#constants.ts'
-import { parseCleanPath, toCleanPath } from '#url.ts'
 import { applyFilters } from '#filter.ts'
+import { parseCleanPath, toCleanPath } from '#url.ts'
+import { AI_USER_AGENTS, IGNORE_FILES } from '#constants.ts'
 
 function isAiBot(userAgent: string | undefined): boolean {
   if (!userAgent) return false
-  return AI_USER_AGENTS.some(agent =>
-    userAgent.toLowerCase().includes(agent.toLowerCase()),
-  )
+  return AI_USER_AGENTS.some(agent => userAgent.toLowerCase().includes(agent.toLowerCase()))
 }
 
-function getContentType(
-  extension: 'md' | 'txt',
-  userAgent: string | undefined,
-): string {
-  if (extension === 'txt' || isAiBot(userAgent)) {
-    return 'text/plain; charset=utf-8'
-  }
+function getContentType(extension: 'md' | 'txt', userAgent: string | undefined): string {
+  if (extension === 'txt' || isAiBot(userAgent)) return 'text/plain; charset=utf-8'
+
   return 'text/markdown; charset=utf-8'
 }
 
 export const app = new Hono<{ Bindings: Cloudflare.Env }>()
 
-app.use('/:path{.+}', async (c, next) => {
-  const urlPath = c.req.param('path')
+app.use('/:path{.+}', async (context, next) => {
+  const urlPath = context.req.param('path')
   if (
     (urlPath.startsWith('gh_') || urlPath.startsWith('ghf_')) &&
     (urlPath.endsWith('.md') || urlPath.endsWith('.txt'))
   ) {
     return next()
   }
-  if (
-    urlPath.startsWith('github.com/') ||
-    urlPath.startsWith('https://github.com/')
-  ) {
-    const githubUrl = urlPath.startsWith('http')
-      ? urlPath
-      : `https://${urlPath}`
+  if (urlPath.startsWith('github.com/') || urlPath.startsWith('https://github.com/')) {
+    const userAgent = context.req.header('user-agent')
+    const isBrowser = userAgent && /mozilla|webkit|chrome|safari|opera|edge/i.test(userAgent)
+
+    // Only redirect browsers so the URL bar updates to the clean path.
+    // Non-browser clients (curl, wget, bots) skip the redirect and get
+    // content served directly by the catch-all handler.
+    if (!isBrowser) return next()
+
+    const githubUrl = urlPath.startsWith('http') ? urlPath : `https://${urlPath}`
     const parsed = parseGitHubUrl(githubUrl)
 
     let branch = parsed.branch
@@ -69,7 +66,7 @@ app.use('/:path{.+}', async (c, next) => {
           parsed.owner,
           parsed.repo,
           segments,
-          c.env.GITHUB_TOKEN,
+          context.env.GITHUB_TOKEN,
         )
         branch = resolved.branch
         path = resolved.path
@@ -79,15 +76,9 @@ app.use('/:path{.+}', async (c, next) => {
       }
     }
 
-    const cleanPath = toCleanPath(
-      parsed.owner,
-      parsed.repo,
-      branch,
-      path,
-      parsed.type === 'file',
-    )
-    const queryString = new URL(c.req.url).search
-    return c.redirect(`${cleanPath}${queryString}`, 301)
+    const cleanPath = toCleanPath(parsed.owner, parsed.repo, branch, path, parsed.type === 'file')
+    const queryString = new URL(context.req.url).search
+    return context.redirect(`${cleanPath}${queryString}`, 301)
   }
   return next()
 })
@@ -164,8 +155,7 @@ app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
           ? 404
           : message.includes('rate limit') || message.includes('429')
             ? 429
-            : message.includes('Network error') ||
-                message.includes('fetch failed')
+            : message.includes('Network error') || message.includes('fetch failed')
               ? 503
               : 500
       throw new HTTPException(status, { message })
@@ -176,13 +166,8 @@ app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
   try {
     allFiles = await getRepoFiles(owner, repo, branch)
   } catch (e) {
-    const message =
-      e instanceof Error ? e.message : 'Failed to fetch repository files'
-    const status = message.includes('404')
-      ? 404
-      : message.includes('rate limit')
-        ? 429
-        : 500
+    const message = e instanceof Error ? e.message : 'Failed to fetch repository files'
+    const status = message.includes('404') ? 404 : message.includes('rate limit') ? 429 : 500
     throw new HTTPException(status, { message })
   }
 
@@ -190,11 +175,7 @@ app.get('/:cleanPath{ghf?_.+\\.(md|txt)}', cacheMiddleware, async context => {
 
   if (path) files = filterByDirectory(files, path)
 
-  files = applyFilters(
-    files,
-    context.req.queries('exclude'),
-    context.req.queries('include'),
-  )
+  files = applyFilters(files, context.req.queries('exclude'), context.req.queries('include'))
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
 
@@ -265,25 +246,15 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
       branch = resolved.branch
       path = resolved.path
     } catch (e) {
-      const message =
-        e instanceof Error ? e.message : 'Failed to resolve branch'
-      const status = message.includes('404')
-        ? 404
-        : message.includes('rate limit')
-          ? 429
-          : 500
+      const message = e instanceof Error ? e.message : 'Failed to resolve branch'
+      const status = message.includes('404') ? 404 : message.includes('rate limit') ? 429 : 500
       throw new HTTPException(status, { message })
     }
   }
 
   if (parsed.type === 'file') {
     try {
-      const content = await getFileContent(
-        parsed.owner,
-        parsed.repo,
-        branch,
-        path!,
-      )
+      const content = await getFileContent(parsed.owner, parsed.repo, branch, path!)
       return context.text(content, 200, {
         'Content-Type': contentType,
       })
@@ -294,8 +265,7 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
           ? 404
           : message.includes('rate limit') || message.includes('429')
             ? 429
-            : message.includes('Network error') ||
-                message.includes('fetch failed')
+            : message.includes('Network error') || message.includes('fetch failed')
               ? 503
               : 500
       throw new HTTPException(status, { message })
@@ -306,26 +276,16 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   try {
     allFiles = await getRepoFiles(parsed.owner, parsed.repo, branch)
   } catch (e) {
-    const message =
-      e instanceof Error ? e.message : 'Failed to fetch repository files'
-    const status = message.includes('404')
-      ? 404
-      : message.includes('rate limit')
-        ? 429
-        : 500
+    const message = e instanceof Error ? e.message : 'Failed to fetch repository files'
+    const status = message.includes('404') ? 404 : message.includes('rate limit') ? 429 : 500
     throw new HTTPException(status, { message })
   }
 
   let files: Array<GitHubFile> = allFiles
 
-  if (parsed.type === 'directory' && path)
-    files = filterByDirectory(files, path)
+  if (parsed.type === 'directory' && path) files = filterByDirectory(files, path)
 
-  files = applyFilters(
-    files,
-    context.req.queries('exclude'),
-    context.req.queries('include'),
-  )
+  files = applyFilters(files, context.req.queries('exclude'), context.req.queries('include'))
   files = filterFiles(files, IGNORE_FILES)
   files = files.filter(f => isTextFile(f.path))
 
@@ -333,12 +293,7 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
     files,
     async file => {
       try {
-        const content = await getFileContent(
-          parsed.owner,
-          parsed.repo,
-          branch,
-          file.path,
-        )
+        const content = await getFileContent(parsed.owner, parsed.repo, branch, file.path)
         return `## ${file.path}\n\n\`\`\`\n${content}\n\`\`\``
       } catch {
         return `## ${file.path}\n\n*Failed to fetch*`
@@ -352,12 +307,7 @@ app.get('/:path{.+}', cacheMiddleware, async context => {
   if (includeSubmodules && !path) {
     let submoduleResults: Array<SubmoduleContent>
     try {
-      submoduleResults = await fetchSubmodules(
-        parsed.owner,
-        parsed.repo,
-        branch,
-        allFiles,
-      )
+      submoduleResults = await fetchSubmodules(parsed.owner, parsed.repo, branch, allFiles)
     } catch {
       // Continue without submodules if fetching fails
       submoduleResults = []

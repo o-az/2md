@@ -36,10 +36,7 @@ export function parseCleanPath(cleanPath: string): {
 } | null {
   const isMd = cleanPath.endsWith('.md')
   const isTxt = cleanPath.endsWith('.txt')
-  if (
-    (!cleanPath.startsWith('gh_') && !cleanPath.startsWith('ghf_')) ||
-    (!isMd && !isTxt)
-  )
+  if ((!cleanPath.startsWith('gh_') && !cleanPath.startsWith('ghf_')) || (!isMd && !isTxt))
     return null
   const isFile = cleanPath.startsWith('ghf_')
   const extension: 'md' | 'txt' = isTxt ? 'txt' : 'md'
@@ -52,8 +49,7 @@ export function parseCleanPath(cleanPath: string): {
 
   const atIndex = repoWithBranch.indexOf('@')
   const repo = atIndex >= 0 ? repoWithBranch.slice(0, atIndex) : repoWithBranch
-  const encodedBranch =
-    atIndex >= 0 ? repoWithBranch.slice(atIndex + 1) : 'main'
+  const encodedBranch = atIndex >= 0 ? repoWithBranch.slice(atIndex + 1) : 'main'
   const branch = decodeBranch(encodedBranch)
 
   if (!repo) return null

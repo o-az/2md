@@ -15,17 +15,11 @@ describe('parseFilterParams', () => {
   })
 
   test('parses multiple query params', () => {
-    expect(parseFilterParams(['.test.ts', '.spec.ts'])).toEqual([
-      '.test.ts',
-      '.spec.ts',
-    ])
+    expect(parseFilterParams(['.test.ts', '.spec.ts'])).toEqual(['.test.ts', '.spec.ts'])
   })
 
   test('parses brace syntax', () => {
-    expect(parseFilterParams(['{.test.ts,.spec.ts}'])).toEqual([
-      '.test.ts',
-      '.spec.ts',
-    ])
+    expect(parseFilterParams(['{.test.ts,.spec.ts}'])).toEqual(['.test.ts', '.spec.ts'])
   })
 
   test('combines multiple params with brace syntax', () => {
@@ -75,35 +69,21 @@ describe('applyFilters', () => {
 
   test('exclude with brace syntax', () => {
     const result = applyFilters(mockFiles, ['{.test.ts,.spec.ts}'], undefined)
-    expect(result.map(f => f.path)).toEqual([
-      'src/index.ts',
-      'src/utils/helper.ts',
-      'README.md',
-    ])
+    expect(result.map(f => f.path)).toEqual(['src/index.ts', 'src/utils/helper.ts', 'README.md'])
   })
 
   test('exclude with multiple query params', () => {
     const result = applyFilters(mockFiles, ['.test.ts', '.spec.ts'], undefined)
-    expect(result.map(f => f.path)).toEqual([
-      'src/index.ts',
-      'src/utils/helper.ts',
-      'README.md',
-    ])
+    expect(result.map(f => f.path)).toEqual(['src/index.ts', 'src/utils/helper.ts', 'README.md'])
   })
 
   test('include patterns', () => {
     const result = applyFilters(mockFiles, undefined, ['src/utils/'])
-    expect(result.map(f => f.path)).toEqual([
-      'src/utils/helper.ts',
-      'src/utils/helper.spec.ts',
-    ])
+    expect(result.map(f => f.path)).toEqual(['src/utils/helper.ts', 'src/utils/helper.spec.ts'])
   })
 
   test('include then exclude', () => {
     const result = applyFilters(mockFiles, ['.test.ts', '.spec.ts'], ['.ts'])
-    expect(result.map(f => f.path)).toEqual([
-      'src/index.ts',
-      'src/utils/helper.ts',
-    ])
+    expect(result.map(f => f.path)).toEqual(['src/index.ts', 'src/utils/helper.ts'])
   })
 })

@@ -62,9 +62,7 @@ export async function resolveBranchAndPath(
 }
 
 export function parseGitHubUrl(url: string): ParsedGitHubUrl {
-  const cleaned = url
-    .replace(/^https?:\/\/(www\.)?github\.com\//, '')
-    .replace(/\/$/, '')
+  const cleaned = url.replace(/^https?:\/\/(www\.)?github\.com\//, '').replace(/\/$/, '')
 
   const parts = cleaned.split('/')
   const owner = parts[0] ?? ''
@@ -127,9 +125,7 @@ async function getRepoFilesFromUngh(
   }
   if (!response.ok) {
     if (response.status === 403 || response.status === 429) {
-      throw new Error(
-        `ungh rate limit: ${response.status} for ${owner}/${repo}@${branch}`,
-      )
+      throw new Error(`ungh rate limit: ${response.status} for ${owner}/${repo}@${branch}`)
     }
     const errorText = await response.text().catch(() => '')
     throw new Error(
@@ -283,9 +279,7 @@ export async function getFileContent(
   }
   throw (
     lastError ||
-    new Error(
-      `Failed to fetch file after ${retries} retries: ${owner}/${repo}@${branch}/${path}`,
-    )
+    new Error(`Failed to fetch file after ${retries} retries: ${owner}/${repo}@${branch}/${path}`)
   )
 }
 
@@ -315,18 +309,14 @@ export function filterFiles(
   return files.filter(file => {
     const pathParts = file.path.split('/')
     return !ignorePatterns.some(pattern => {
-      if (pattern.includes('/'))
-        return file.path.startsWith(pattern) || file.path === pattern
+      if (pattern.includes('/')) return file.path.startsWith(pattern) || file.path === pattern
 
       return pathParts.some(part => part === pattern)
     })
   })
 }
 
-export function filterByDirectory(
-  files: Array<GitHubFile>,
-  directory: string,
-): Array<GitHubFile> {
+export function filterByDirectory(files: Array<GitHubFile>, directory: string): Array<GitHubFile> {
   const normalizedDir = directory.replace(/\/$/, '')
   return files.filter(file => file.path.startsWith(`${normalizedDir}/`))
 }
@@ -388,12 +378,8 @@ export function parseGitmodules(content: string): Array<Submodule> {
   return submodules
 }
 
-function parseSubmoduleUrl(
-  url: string,
-): { owner: string; repo: string } | null {
-  const normalized = url
-    .replace(/^git@github\.com:/, 'https://github.com/')
-    .replace(/\.git$/, '')
+function parseSubmoduleUrl(url: string): { owner: string; repo: string } | null {
+  const normalized = url.replace(/^git@github\.com:/, 'https://github.com/').replace(/\.git$/, '')
 
   const match = normalized.match(/github\.com\/([^/]+)\/([^/]+)/)
   if (!match || !match[1] || !match[2]) return null
@@ -450,15 +436,8 @@ export async function fetchSubmodules(
           return
         }
 
-        const defaultBranch = await getDefaultBranch(
-          submodule.owner,
-          submodule.repo,
-        )
-        const subFiles = await getRepoFiles(
-          submodule.owner,
-          submodule.repo,
-          defaultBranch,
-        )
+        const defaultBranch = await getDefaultBranch(submodule.owner, submodule.repo)
+        const subFiles = await getRepoFiles(submodule.owner, submodule.repo, defaultBranch)
 
         const textFiles = subFiles.filter(f => isTextFile(f.path))
 
