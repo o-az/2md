@@ -3,9 +3,18 @@ import { app } from '#index.ts'
 import { env } from 'cloudflare:test'
 import { describe, expect, test } from 'vitest'
 
-async function fetchApp(path: string, options?: { followRedirects?: boolean }): Promise<Response> {
+const BROWSER_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+async function fetchApp(
+  path: string,
+  options?: { followRedirects?: boolean; browser?: boolean },
+): Promise<Response> {
   const url = path.startsWith('http') ? path : `http://localhost/${path}`
-  const res = await app.request(url, { redirect: 'manual' }, env)
+  const headers: Record<string, string> = {}
+  if (options?.browser) headers['user-agent'] = BROWSER_UA
+
+  const res = await app.request(url, { redirect: 'manual', headers }, env)
 
   if (options?.followRedirects && res.status >= 300 && res.status < 400) {
     const location = res.headers.get('location')
@@ -17,9 +26,9 @@ async function fetchApp(path: string, options?: { followRedirects?: boolean }): 
   return res
 }
 
-describe('Basic redirects', () => {
+describe('Browser redirects', () => {
   test('whole repo (no https)', async () => {
-    const res = await fetchApp('github.com/o-az/2md')
+    const res = await fetchApp('github.com/o-az/2md', { browser: true })
     expect(res.status).toBe(301)
     expect(res.headers.get('location')).toContain('gh_o-az_2md@main.md')
   })
@@ -27,7 +36,7 @@ describe('Basic redirects', () => {
   test('whole repo (with https in path)', async () => {
     const res = await app.request(
       'http://localhost/https://github.com/o-az/2md',
-      { redirect: 'manual' },
+      { redirect: 'manual', headers: { 'user-agent': BROWSER_UA } },
       env,
     )
     expect(res.status).toBe(301)
@@ -35,59 +44,64 @@ describe('Basic redirects', () => {
   })
 
   test('directory (tree/main)', async () => {
-    const res = await fetchApp('github.com/o-az/2md/tree/main/src')
+    const res = await fetchApp('github.com/o-az/2md/tree/main/src', { browser: true })
     expect(res.status).toBe(301)
     expect(res.headers.get('location')).toContain('gh_o-az_2md@main_src.md')
   })
 
   test('directory shorthand (no tree)', async () => {
-    const res = await fetchApp('github.com/o-az/2md/src')
+    const res = await fetchApp('github.com/o-az/2md/src', { browser: true })
     expect(res.status).toBe(301)
     expect(res.headers.get('location')).toContain('gh_o-az_2md@main_src.md')
   })
 })
 
+describe('Non-browser direct serving', () => {
+  test('whole repo returns content directly', async () => {
+    const res = await fetchApp('github.com/o-az/2md')
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    expect(text).toContain('o-az/2md')
+  })
+
+  test('directory returns content directly', async () => {
+    const res = await fetchApp('github.com/o-az/2md/tree/main/src')
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    expect(text).toContain('src/index.ts')
+  })
+})
+
 describe('File handling', () => {
-  test('single file (blob)', async () => {
-    const res = await fetchApp('github.com/o-az/2md/blob/main/justfile')
+  test('single file (blob) - browser redirect', async () => {
+    const res = await fetchApp('github.com/o-az/2md/blob/main/justfile', { browser: true })
     expect(res.status).toBe(301)
     expect(res.headers.get('location')).toContain('ghf_o-az_2md@main_justfile.md')
   })
 
+  test('single file (blob) - non-browser direct', async () => {
+    const res = await fetchApp('github.com/o-az/2md/blob/main/justfile')
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    expect(text).toContain('just --list')
+  })
+
   test('file shorthand (justfile)', async () => {
-    const res = await fetchApp('github.com/o-az/2md/justfile', {
-      followRedirects: true,
-    })
-    if (res.status !== 200) {
-      const text = await res.text()
-      console.error(`Unexpected status ${res.status}:`, text)
-    }
+    const res = await fetchApp('github.com/o-az/2md/justfile')
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('just --list')
   })
 
   test('file shorthand (with extension)', async () => {
-    const res = await fetchApp('github.com/o-az/2md/biome.json', {
-      followRedirects: true,
-    })
-    if (res.status !== 200) {
-      const text = await res.text()
-      console.error(`Unexpected status ${res.status}:`, text)
-    }
+    const res = await fetchApp('github.com/o-az/2md/biome.json')
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('biomejs')
   })
 
   test('file in subdirectory', async () => {
-    const res = await fetchApp('github.com/o-az/2md/src/index.ts', {
-      followRedirects: true,
-    })
-    if (res.status !== 200) {
-      const text = await res.text()
-      console.error(`Unexpected status ${res.status}:`, text)
-    }
+    const res = await fetchApp('github.com/o-az/2md/src/index.ts')
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('Hono')
@@ -95,26 +109,27 @@ describe('File handling', () => {
 })
 
 describe('Branch handling', () => {
-  test('different branch (main)', async () => {
-    const res = await fetchApp('github.com/honojs/hono/tree/main/src')
+  test('different branch (main) - browser redirect', async () => {
+    const res = await fetchApp('github.com/honojs/hono/tree/main/src', { browser: true })
     expect(res.status).toBe(301)
     expect(res.headers.get('location')).toContain('gh_honojs_hono@main_src.md')
   })
 
-  test('tag as branch', async () => {
-    const res = await fetchApp('github.com/honojs/hono/tree/v4.0.0/src')
+  test('tag as branch - browser redirect', async () => {
+    const res = await fetchApp('github.com/honojs/hono/tree/v4.0.0/src', { browser: true })
     expect(res.status).toBe(301)
     expect(res.headers.get('location')).toContain('gh_honojs_hono@v4.0.0_src.md')
   })
 
-  test('tag returns content with tag in header', async () => {
-    const res = await fetchApp('github.com/honojs/hono/tree/v4.0.0/src', {
-      followRedirects: true,
-    })
-    if (res.status !== 200) {
-      const text = await res.text()
-      console.error(`Unexpected status ${res.status}:`, text)
-    }
+  test('tag returns content directly for non-browser', async () => {
+    const res = await fetchApp('github.com/honojs/hono/tree/v4.0.0/src')
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    expect(text).toContain('honojs/hono/src')
+  })
+
+  test('tag returns content with tag in header via clean path', async () => {
+    const res = await fetchApp('gh_honojs_hono@v4.0.0_src.md')
     expect(res.status).toBe(200)
     const text = await res.text()
     expect(text).toContain('honojs/hono@v4.0.0')
@@ -161,9 +176,7 @@ describe('Clean path format', () => {
 
 describe('Edge cases', () => {
   test('directory with dot in name', async () => {
-    const res = await fetchApp('github.com/o-az/2md/tree/main/.github', {
-      followRedirects: true,
-    })
+    const res = await fetchApp('github.com/o-az/2md/tree/main/.github')
     if (res.status !== 200) {
       const text = await res.text()
       console.error(`Unexpected status ${res.status}:`, text)
@@ -174,9 +187,7 @@ describe('Edge cases', () => {
   })
 
   test('file with multiple dots', async () => {
-    const res = await fetchApp('github.com/o-az/2md/.env.example', {
-      followRedirects: true,
-    })
+    const res = await fetchApp('github.com/o-az/2md/.env.example')
     if (res.status !== 200) {
       const text = await res.text()
       console.error(`Unexpected status ${res.status}:`, text)
@@ -188,16 +199,15 @@ describe('Edge cases', () => {
 
   test('repo with hyphen in owner/name', async () => {
     const res = await fetchApp('github.com/o-az/2md')
-    expect(res.status).toBe(301)
-    expect(res.headers.get('location')).toContain('gh_o-az_2md@main.md')
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    expect(text).toContain('o-az/2md')
   })
 })
 
 describe('Submodules support', () => {
   test('submodules param on repo with submodules', async () => {
-    const res = await fetchApp('github.com/foundry-rs/forge-std?submodules=true', {
-      followRedirects: true,
-    })
+    const res = await fetchApp('github.com/foundry-rs/forge-std?submodules=true')
     if (res.status !== 200) {
       const text = await res.text()
       console.error(`Unexpected status ${res.status}:`, text)
@@ -208,9 +218,7 @@ describe('Submodules support', () => {
   })
 
   test('submodules param returns submodule content', async () => {
-    const res = await fetchApp('github.com/transmissions11/solmate?submodules=true', {
-      followRedirects: true,
-    })
+    const res = await fetchApp('github.com/transmissions11/solmate?submodules=true')
     if (res.status !== 200) {
       const text = await res.text()
       console.error(`Unexpected status ${res.status}:`, text)
@@ -221,9 +229,7 @@ describe('Submodules support', () => {
   })
 
   test('no submodules param = no submodule header', async () => {
-    const res = await fetchApp('github.com/transmissions11/solmate', {
-      followRedirects: true,
-    })
+    const res = await fetchApp('github.com/transmissions11/solmate')
     if (res.status !== 200) {
       const text = await res.text()
       console.error(`Unexpected status ${res.status}:`, text)
